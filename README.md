@@ -1,6 +1,5 @@
 # vercel---risk-test-ezra-55-
 
-
 # 🎯 EZRA 5.0 - מחולל דוחות ניהול סיכונים חכם
 
 מערכת חכמה לניתוח מסמכי תפיסה וייצור דוחות ניהול סיכונים מקצועיים עם שילוב Claude AI.
