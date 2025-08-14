@@ -1,674 +1,156 @@
-<!DOCTYPE html> 
-<html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EZRA 5.0 - מחולל דוחות ניהול סיכונים חכם</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh; color: #333; direction: rtl;
-        }
-        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        .header { text-align: center; color: white; margin-bottom: 40px; }
-        .header h1 { font-size: 3em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-        .header .subtitle { font-size: 1.2em; opacity: 0.9; }
+import Anthropic from '@anthropic-ai/sdk';
+
+export default async function handler(req, res) {
+  // הוסף CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  // Ensure we only handle POST requests
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+  }
+
+  try {
+    console.log('API Request received');
+    
+    // בדיקה שיש API key
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('ANTHROPIC_API_KEY not configured');
+      return res.status(500).json({ error: 'API key not configured. Please set ANTHROPIC_API_KEY environment variable.' });
+    }
+
+    const { documentText, options } = req.body;
+
+    if (!documentText) {
+      console.error('No document text provided');
+      return res.status(400).json({ error: 'Document text is required' });
+    }
+
+    if (documentText.length < 10) {
+      console.error('Document text too short');
+      return res.status(400).json({ error: 'Document text is too short for analysis' });
+    }
+
+    console.log('Document text length:', documentText.length);
+    console.log('Options:', options);
+
+    // יצירת instance של Anthropic
+    let anthropic;
+    try {
+      anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+      console.log('Anthropic client initialized');
+    } catch (initError) {
+      console.error('Failed to initialize Anthropic client:', initError);
+      return res.status(500).json({ error: 'Failed to initialize AI service' });
+    }
+
+    const prompt = `
+      אתה EZRA 5.0, מומחה לניהול סיכונים במערכת החינוך הישראלית.
+      קיבלת את מסמך התפיסה הבא לניתוח:
+      
+      <document>
+      ${documentText.substring(0, 8000)}
+      </document>
+
+      הנחיות לניתוח:
+      - סוג ניתוח: ${options?.analysisType || 'standard'}
+      - התמקדות בסיכונים: ${options?.riskFocus || 'balanced'}
+      - קהל יעד לדוח: ${options?.targetAudience || 'management'}
+      - הקשר מיוחד: ${options?.specificContext || 'אין'}
+
+      צור דוח ניהול סיכונים מקיף בפורמט Markdown הכולל:
+
+      # דוח ניהול סיכונים - [שם הפרויקט]
+
+      ## תקציר מנהלים
+      [סיכום קצר של הממצאים העיקריים]
+
+      ## זיהוי הפרויקט
+      - **שם הפרויקט**: [שם]
+      - **ארגון**: [ארגון]
+      - **מטרות עיקריות**: [רשימת מטרות]
+
+      ## ניתוח סיכונים עיקריים
+      ### סיכון גבוה #1
+      - **תיאור**: [תיאור הסיכון]
+      - **השפעה צפויה**: [השפעות]
+      - **הסתברות**: [גבוהה/בינונית/נמוכה]
+      - **אסטרטגיות התמודדות**: [המלצות]
+
+      ## הערכת רמת חדשנות
+      [ניתוח רמת החדשנות של הפרויקט]
+
+      ## המלצות מעשיות
+      1. **המלצה ראשונה**: [פירוט]
+      2. **המלצה שנייה**: [פירוט]
+
+      ## מטריצת סיכונים
+      | סיכון | הסתברות | השפעה | רמת חומרה | פעולות נדרשות |
+      |--------|----------|-------|------------|----------------|
+      | [סיכון 1] | [גבוהה] | [גבוהה] | [קריטית] | [פעולות] |
+
+      ## לוח זמנים ליישום המלצות
+      - **שלב ראשון** (0-30 יום): [פעולות מיידיות]
+      - **שלב שני** (1-3 חודשים): [פעולות בינוניות טווח]
+      - **שלב שלישי** (3-12 חודשים): [פעולות ארוכות טווח]
+
+      התחל ישירות עם הכותרת הראשית ובנה דוח מקצועי ומפורט.
+    `;
+
+    console.log('Sending request to Anthropic...');
+
+    const stream = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }],
+      stream: true,
+    });
+
+    console.log('Stream created successfully');
+
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Transfer-Encoding': 'chunked',
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-cache',
+    });
+
+    let chunks = 0;
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        chunks++;
+        res.write(event.delta.text);
         
-        .upload-section {
-            background: white; border-radius: 20px; padding: 40px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1); margin-bottom: 30px; transition: all 0.3s ease;
-            text-align: center;
+        // אופציונלי: לוג כל 50 chunks
+        if (chunks % 50 === 0) {
+          console.log(`Sent ${chunks} chunks`);
         }
-        .upload-zone {
-            border: 3px dashed #667eea; border-radius: 15px; padding: 80px 40px;
-            cursor: pointer; transition: all 0.3s ease; background: #f8f9fa;
-        }
-        .upload-zone:hover { border-color: #5a6fd8; background: #e3f2fd; transform: translateY(-2px); }
-        .upload-zone.dragover { border-color: #4caf50; background: #e8f5e8; }
-        .upload-icon { font-size: 5em; color: #667eea; margin-bottom: 20px; }
-        .upload-text { font-size: 1.5em; color: #555; margin-bottom: 15px; font-weight: bold; }
-        .file-types { color: #888; font-size: 1em; }
-        .file-input { display: none; }
+      }
+    }
 
-        .advanced-options {
-            margin-top: 25px; padding: 20px; background: #f8f9fa; border-radius: 15px;
-            border: 2px dashed #ddd;
-        }
-        .toggle-advanced {
-            background: none; border: none; color: #667eea; font-size: 0.9em; cursor: pointer;
-            text-decoration: underline; margin-top: 15px;
-        }
-        .options-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 15px; }
-        .option-group { }
-        .option-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; font-size: 0.9em; }
-        .option-group input, .option-group textarea, .option-group select {
-            width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px;
-            font-size: 0.9em; transition: border-color 0.3s ease;
-        }
-        .option-group input:focus, .option-group textarea:focus, .option-group select:focus {
-            outline: none; border-color: #667eea;
-        }
+    console.log(`Stream completed. Total chunks: ${chunks}`);
+    res.end();
 
-        .generate-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;
-            padding: 20px 40px; border-radius: 25px; font-size: 1.3em; font-weight: bold;
-            cursor: pointer; transition: all 0.3s ease; width: 100%; margin-top: 30px;
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
-        }
-        .generate-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4); }
-        .generate-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
-
-        .progress-section {
-            background: white; border-radius: 20px; padding: 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            margin-bottom: 30px; text-align: center;
-        }
-        .progress-title { font-size: 1.5em; margin-bottom: 30px; color: #333; }
-        .progress-bar { width: 100%; height: 25px; background: #f0f0f0; border-radius: 15px; overflow: hidden; margin-bottom: 25px; }
-        .progress-fill {
-            height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            width: 0%; transition: width 0.5s ease; border-radius: 15px;
-        }
-        .progress-text { font-size: 1.2em; font-weight: bold; color: #555; margin-bottom: 30px; }
-        .progress-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .progress-step {
-            padding: 25px 15px; border-radius: 15px; background: #f8f9fa; transition: all 0.3s ease;
-        }
-        .progress-step.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; transform: scale(1.05); }
-        .progress-step.completed { background: #4caf50; color: white; }
-        .step-icon { font-size: 2.5em; margin-bottom: 10px; }
-        .step-text { font-size: 1em; font-weight: bold; }
-
-        .error-message { background: #ffebee; color: #c62828; padding: 20px; border-radius: 15px; margin: 20px 0; border-right: 4px solid #f44336; font-size: 1.1em; }
-        .success-message { background: #e8f5e8; color: #2e7d32; padding: 20px; border-radius: 15px; margin: 20px 0; border-right: 4px solid #4caf50; font-size: 1.1em; }
-        .back-btn {
-            background: #95a5a6; color: white; border: none; padding: 15px 30px; border-radius: 25px;
-            cursor: pointer; font-weight: bold; margin-bottom: 20px; transition: all 0.3s ease; font-size: 1.1em;
-        }
-        .back-btn:hover { background: #7f8c8d; transform: translateY(-2px); }
-
-        /* מחלקות תצוגה עקביות */
-        .hidden { display: none !important; }
-        .show { display: block !important; }
-
-        @media (max-width: 768px) {
-            .progress-steps { grid-template-columns: 1fr; }
-            .header h1 { font-size: 2.2em; }
-            .upload-zone { padding: 60px 20px; }
-            .upload-icon { font-size: 4em; }
-            .upload-text { font-size: 1.3em; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🎯 EZRA 5.0</h1>
-            <div class="subtitle">מחולל דוחות ניהול סיכונים חכם</div>
-        </div>
-
-        <div class="upload-section" id="uploadSection">
-            <div class="upload-zone" id="uploadZone">
-                <div class="upload-icon">📄</div>
-                <div class="upload-text">העלה מסמך תפיסה</div>
-                <div class="file-types">רק קבצי טקסט (.txt) • עד 5MB</div>
-                <input type="file" id="fileInput" class="file-input" accept=".txt">
-            </div>
-
-            <button class="toggle-advanced" id="toggleAdvanced">⚙️ הגדרות מתקדמות (אופציונלי)</button>
-            
-            <div class="advanced-options hidden" id="advancedOptions">
-                <div class="options-grid">
-                    <div class="option-group">
-                        <label for="analysisType">סוג ניתוח מיוחד:</label>
-                        <select id="analysisType">
-                            <option value="standard">ניתוח סטנדרטי</option>
-                            <option value="educational">מתמקד בהיבטים חינוכיים</option>
-                            <option value="technological">מתמקד בטכנולוגיה</option>
-                            <option value="organizational">מתמקד בשינוי ארגוני</option>
-                        </select>
-                    </div>
-                    <div class="option-group">
-                        <label for="riskFocus">התמקדות בסיכונים:</label>
-                        <select id="riskFocus">
-                            <option value="balanced">מאוזן</option>
-                            <option value="conservative">שמרני (דגש על סיכונים)</option>
-                            <option value="optimistic">אופטימי (דגש על הזדמנויות)</option>
-                        </select>
-                    </div>
-                    <div class="option-group">
-                        <label for="targetAudience">קהל יעד לדוח:</label>
-                        <select id="targetAudience">
-                            <option value="management">הנהלה עליונה</option>
-                            <option value="committee">ועדה מקצועית</option>
-                            <option value="technical">צוות טכני</option>
-                            <option value="stakeholders">בעלי עניין</option>
-                        </select>
-                    </div>
-                    <div class="option-group">
-                        <label for="specificContext">הקשר מיוחד או הנחיות:</label>
-                        <textarea id="specificContext" placeholder="לדוגמה: 'התמקד בהיבטי תקציב', 'הדגש סיכוני רגולציה', וכו..." rows="3"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <button class="generate-btn" id="generateBtn" disabled>
-                ✨ צור דוח ניהול סיכונים
-            </button>
-        </div>
-
-        <div class="progress-section hidden" id="progressSection">
-            <div class="progress-title">מייצר את הדוח שלך...</div>
-            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-            <div class="progress-text" id="progressText">0%</div>
-            
-            <div class="progress-steps">
-                <div class="progress-step" id="step1">
-                    <div class="step-icon">🔍</div>
-                    <div class="step-text">ניתוח מסמך</div>
-                </div>
-                <div class="progress-step" id="step2">
-                    <div class="step-icon">🤖</div>
-                    <div class="step-text">עיבוד AI</div>
-                </div>
-                <div class="progress-step" id="step3">
-                    <div class="step-icon">📊</div>
-                    <div class="step-text">יצירת דוח</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="hidden" id="reportSection">
-    <button class="back-btn" id="backBtn">🔙 העלה מסמך חדש</button>
-    <div id="reportContainer" style="background: white; border-radius: 15px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); min-height: 700px; line-height: 1.6;">
-        <h2 style="text-align: center; margin-bottom: 20px;">דוח ניהול סיכונים</h2>
-        <div id="reportContent"></div>
-    </div>
-</div>
-
-    <script>
-        // DOM Elements
-        const uploadZone = document.getElementById('uploadZone');
-        const fileInput = document.getElementById('fileInput');
-        const generateBtn = document.getElementById('generateBtn');
-        const uploadSection = document.getElementById('uploadSection');
-        const progressSection = document.getElementById('progressSection');
-        const reportSection = document.getElementById('reportSection');
-        const progressFill = document.getElementById('progressFill');
-        const progressText = document.getElementById('progressText');
-        const backBtn = document.getElementById('backBtn');
-        const toggleAdvanced = document.getElementById('toggleAdvanced');
-        const advancedOptions = document.getElementById('advancedOptions');
-
-        let selectedFile = null;
-
-        // פונקציה לסניטציה של HTML - מונעת XSS
-        function sanitizeHTML(text) {
-            if (!text) return '';
-            const temp = document.createElement('div');
-            temp.textContent = text.toString();
-            return temp.innerHTML;
-        }
-
-        // Event Listeners
-        uploadZone.addEventListener('click', () => fileInput.click());
-        uploadZone.addEventListener('dragover', handleDragOver);
-        uploadZone.addEventListener('dragleave', handleDragLeave);
-        uploadZone.addEventListener('drop', handleDrop);
-        fileInput.addEventListener('change', handleFileSelect);
-        generateBtn.addEventListener('click', generateReport);
-        backBtn.addEventListener('click', resetToUpload);
-        toggleAdvanced.addEventListener('click', toggleAdvancedOptions);
-
-        function toggleAdvancedOptions() {
-            advancedOptions.classList.toggle('hidden');
-            toggleAdvanced.textContent = advancedOptions.classList.contains('hidden') 
-                ? '⚙️ הגדרות מתקדמות (אופציונלי)' 
-                : '⚙️ הסתר הגדרות מתקדמות';
-        }
-
-        function handleDragOver(e) {
-            e.preventDefault();
-            uploadZone.classList.add('dragover');
-        }
-
-        function handleDragLeave(e) {
-            e.preventDefault();
-            uploadZone.classList.remove('dragover');
-        }
-
-        function handleDrop(e) {
-            e.preventDefault();
-            uploadZone.classList.remove('dragover');
-            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
-        }
-
-        function handleFileSelect(e) {
-            if (e.target.files[0]) handleFile(e.target.files[0]);
-        }
-
-        function handleFile(file) {
-            // תמיכה רק בקבצי טקסט לעת עתה
-            if (file.type !== 'text/plain') {
-                showError('נתמכים רק קבצי טקסט (.txt) כרגע. תמיכה ב-PDF ו-Word תתווסף בקרוב.');
-                return;
-            }
-
-            if (file.size > 5 * 1024 * 1024) {
-                showError('הקובץ גדול מדי. מקסימום 5MB.');
-                return;
-            }
-
-            selectedFile = file;
-            uploadZone.innerHTML = `
-                <div class="upload-icon">✅</div>
-                <div class="upload-text">מוכן: ${sanitizeHTML(file.name)}</div>
-                <div class="file-types">${formatFileSize(file.size)}</div>
-            `;
-            generateBtn.disabled = false;
-            showSuccess('קובץ הועלה בהצלחה! לחץ ליצירת הדוח.');
-     async function generateReport() {
-            if (!selectedFile) {
-                showError('אנא בחר קובץ תחילה');
-                return;
-            }
-
-            try {
-                // מעבר לתצוגת התקדמות
-                uploadSection.classList.add('hidden');
-                progressSection.classList.remove('hidden');
-
-                updateProgress(30, 'מנתח את המסמך...', 1);
-                await delay(1000);
-
-                // חילוץ טקסט בטוח - רק לקבצי טקסט
-                const documentText = await extractTextSafely(selectedFile);
-                
-                updateProgress(60, 'Claude מעבד את הנתונים...', 2);
-                await delay(1500);
-
-                // שליחת ההגדרות המתקדמות
-                const advancedSettings = {
-                    analysisType: document.getElementById('analysisType').value,
-                    riskFocus: document.getElementById('riskFocus').value,
-                    targetAudience: document.getElementById('targetAudience').value,
-                    specificContext: document.getElementById('specificContext').value
-                };
-
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        documentText: documentText, 
-                        options: advancedSettings 
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`שגיאה בשרת: ${response.status} ${response.statusText}`);
-                }
-
-                updateProgress(100, 'מכין את הדוח הסופי...', 3);
-                await delay(1000);
-
-                // מעבר לתצוגת הדוח
-                progressSection.classList.add('hidden');
-                reportSection.classList.remove('hidden');
-                
-                const reportContentEl = document.getElementById('reportContent');
-                reportContentEl.innerHTML = '<div style="text-align: center; padding: 20px;">טוען דוח... 🤖</div>';
-
-                // קריאת התוכן מהAPI
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let markdownContent = '';
-
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    
-                    const textChunk = decoder.decode(value);
-                    markdownContent += textChunk;
-                    
-                    // המרה של Markdown ל-HTML (פשוטה)
-                    const htmlContent = convertMarkdownToHTML(markdownContent);
-                    reportContentEl.innerHTML = htmlContent;
-                }
-
-            } catch (error) {
-                console.error('שגיאה ביצירת הדוח:', error);
-                showError('שגיאה ביצירת הדוח: ' + error.message);
-                resetToUpload();
-            }
-        }
-
-        // פונקציה פשוטה להמרת Markdown ל-HTML
-        function convertMarkdownToHTML(markdown) {
-            return markdown
-                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-                .replace(/^## (.*$)/gim, '<h2 style="color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin: 20px 0;">$1</h2>')
-                .replace(/^# (.*$)/gim, '<h1 style="color: #667eea; text-align: center; margin: 20px 0;">$1</h1>')
-                .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-                .replace(/\*(.*)\*/gim, '<em>$1</em>')
-                .replace(/^\* (.*$)/gim, '<li>$1</li>')
-                .replace(/(<li>.*<\/li>)/gims, '<ul style="margin: 10px 0; padding-right: 20px;">$1</ul>')
-                .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
-                .replace(/\n\n/gim, '</p><p>')
-                .replace(/^(?!<[h|u|l])/gim, '<p>')
-                .replace(/$/gim, '</p>')
-                .replace(/<p><\/p>/gim, '')
-                .replace(/<p>(<h[1-6])/gim, '$1')
-                .replace(/(<\/h[1-6]>)<\/p>/gim, '$1');
-        }
-
-        async function extractTextSafely(file) {
-            // חילוץ בטוח רק לקבצי טקסט
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.onerror = () => reject(new Error('שגיאה בקריאת הקובץ'));
-                reader.readAsText(file, 'utf-8');
-            });
-        }
-
-        async function analyzeWithClaude(documentText, advancedSettings) {
-            try {
-                const maxLength = 8000;
-                const truncatedText = documentText.length > maxLength 
-                    ? documentText.substring(0, maxLength) + "..."
-                    : documentText;
-
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        documentText: truncatedText,
-                        options: advancedSettings
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || `שגיאה בשרת: ${response.status}`);
-                }
-
-                return await response.json();
-            } catch (error) {
-                console.error('שגיאה בקריאה ל-Claude:', error);
-                throw new Error('לא ניתן להתחבר לשירות הניתוח. אנא נסה שוב מאוחר יותר.');
-            }
-        }
-
-            progressSection.classList.add('hidden');
-            reportSection.classList.remove('hidden');
-            document.getElementById('reportFrame').srcdoc = generateReportHTML(reportData);
-        }
-
-            // סניטציה של כל הנתונים לפני הזרקה ל-HTML
-            const safeData = {
-                projectName: sanitizeHTML(data.projectName),
-                organization: sanitizeHTML(data.organization),
-                projectManager: sanitizeHTML(data.projectManager),
-                projectType: sanitizeHTML(data.projectType),
-                timeline: sanitizeHTML(data.timeline),
-                regulatoryPartners: sanitizeHTML(data.regulatoryPartners),
-                innovationDescription: sanitizeHTML(data.innovationDescription),
-                committeeRecommendation: sanitizeHTML(data.committeeRecommendation),
-                executiveSummary: sanitizeHTML(data.executiveSummary),
-                goals: data.goals ? data.goals.map(goal => ({
-                    title: sanitizeHTML(goal.title),
-                    description: sanitizeHTML(goal.description)
-                })) : [],
-                risks: data.risks ? data.risks.map(risk => ({
-                    ...risk,
-                    title: sanitizeHTML(risk.title),
-                    description: sanitizeHTML(risk.description),
-                    impacts: risk.impacts ? risk.impacts.map(impact => sanitizeHTML(impact)) : [],
-                    opportunities: risk.opportunities ? risk.opportunities.map(opp => sanitizeHTML(opp)) : []
-                })) : [],
-                recommendations: data.recommendations ? data.recommendations.map(rec => ({
-                    title: sanitizeHTML(rec.title),
-                    description: sanitizeHTML(rec.description),
-                    linkedGoal: rec.linkedGoal
-                })) : [],
-                innovationLevel: data.innovationLevel || { totalScore: 0, pedagogicalImpact: 0, technologicalComplexity: 0, organizationalChange: 0, technologicalRisk: 0 },
-                riskCounts: data.riskCounts || { veryHigh: 0, high: 0, medium: 0, low: 0 }
-            };
-
-            return `<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>דוח ניהול סיכונים - ${safeData.projectName}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; color: #333; direction: rtl; background: #f5f7fa; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; text-align: center; }
-        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
-        .section { padding: 30px; border-bottom: 1px solid #eee; }
-        .section-title { font-size: 1.8em; color: #667eea; margin-bottom: 20px; border-bottom: 3px solid #667eea; padding-bottom: 10px; }
-        .project-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .info-item { padding: 15px; background: #f8f9fa; border-radius: 10px; border-right: 4px solid #667eea; }
-        .info-label { font-weight: bold; color: #667eea; margin-bottom: 5px; }
-        .goal-item { padding: 20px; background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border-radius: 10px; border-right: 5px solid #2196f3; margin-bottom: 15px; }
-        .risk-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
-        .risk-counter { text-align: center; padding: 20px; border-radius: 10px; color: white; }
-        .risk-counter.very-high { background: #f44336; }
-        .risk-counter.high { background: #ff9800; }
-        .risk-counter.medium { background: #ffeb3b; color: #333; }
-        .risk-counter.low { background: #4caf50; }
-        .risk-counter .count { font-size: 2em; font-weight: bold; }
-        .risk-card { border-radius: 15px; padding: 25px; margin-bottom: 20px; border-right: 6px solid; }
-        .risk-very-high { background: #ffebee; border-right-color: #f44336; }
-        .risk-high { background: #fff3e0; border-right-color: #ff9800; }
-        .risk-medium { background: #fffde7; border-right-color: #ffeb3b; }
-        .risk-low { background: #e8f5e8; border-right-color: #4caf50; }
-        .risk-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .risk-severity { padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9em; }
-        .severity-very-high { background: #f44336; color: white; }
-        .severity-high { background: #ff9800; color: white; }
-        .severity-medium { background: #ffeb3b; color: #333; }
-        .severity-low { background: #4caf50; color: white; }
-        .risk-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px; }
-        .metric { text-align: center; padding: 15px; background: rgba(255,255,255,0.7); border-radius: 10px; }
-        .metric-value { font-size: 1.5em; font-weight: bold; color: #667eea; }
-        .innovation-score { text-align: center; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px; margin-bottom: 20px; }
-        .innovation-total { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
-        .innovation-breakdown { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; }
-        .innovation-item { text-align: center; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px; }
-        .innovation-value { font-size: 1.5em; font-weight: bold; }
-        .recommendation-item { border-right: 4px solid #667eea; padding: 20px; margin-bottom: 15px; background: #f8f9fa; border-radius: 10px; }
-        .recommendation-header { font-size: 1.2em; font-weight: bold; color: #667eea; margin-bottom: 10px; }
-        .footer { text-align: center; padding: 20px; background: #667eea; color: white; }
-        .print-btn { position: fixed; top: 20px; left: 20px; background: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; z-index: 1000; }
-        @media print { .print-btn { display: none; } }
-        @media (max-width: 768px) { .risk-summary { grid-template-columns: repeat(2, 1fr); } .innovation-breakdown { grid-template-columns: repeat(2, 1fr); } .risk-metrics { grid-template-columns: 1fr; } }
-    </style>
-</head>
-<body>
-    <button class="print-btn" onclick="window.print()">🖨️ הדפס</button>
-    <div class="container">
-        <div class="header">
-            <h1>דוח ניהול סיכונים</h1>
-            <div class="subtitle">${safeData.projectName} | ${safeData.organization}</div>
-        </div>
-
-        <div class="section">
-            <h2 class="section-title">פרטי הפרויקט</h2>
-            <div class="project-info">
-                <div class="info-item"><div class="info-label">שם הפרויקט</div><div>${safeData.projectName}</div></div>
-                <div class="info-item"><div class="info-label">ארגון</div><div>${safeData.organization}</div></div>
-                <div class="info-item"><div class="info-label">מנהל פרויקט</div><div>${safeData.projectManager || 'לא צוין'}</div></div>
-                <div class="info-item"><div class="info-label">סוג פרויקט</div><div>${safeData.projectType || 'לא צוין'}</div></div>
-                <div class="info-item"><div class="info-label">לוח זמנים</div><div>${safeData.timeline || 'לא צוין'}</div></div>
-                <div class="info-item"><div class="info-label">שותפים רגולטוריים</div><div>${safeData.regulatoryPartners || 'לא צוין'}</div></div>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2 class="section-title">מטרות הפרויקט</h2>
-            ${safeData.goals.map(goal => `<div class="goal-item"><strong>${goal.title}</strong><br>${goal.description}</div>`).join('')}
-        </div>
-
-        <div class="section">
-            <h2 class="section-title">סיכום סיכונים</h2>
-            <div class="risk-summary">
-                <div class="risk-counter very-high"><div class="count">${safeData.riskCounts.veryHigh}</div><div class="label">גבוהה מאוד</div></div>
-                <div class="risk-counter high"><div class="count">${safeData.riskCounts.high}</div><div class="label">גבוהה</div></div>
-                <div class="risk-counter medium"><div class="count">${safeData.riskCounts.medium}</div><div class="label">בינונית</div></div>
-                <div class="risk-counter low"><div class="count">${safeData.riskCounts.low}</div><div class="label">נמוכה</div></div>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2 class="section-title">ניתוח סיכונים מפורט</h2>
-            ${safeData.risks.map(risk => {
-                const severityClass = getSeverityClass(risk.severity);
-                const severityLabel = getSeverityLabel(risk.severity);
-                return `
-                <div class="risk-card ${severityClass}">
-                    <div class="risk-header">
-                        <div class="risk-title">${risk.title}</div>
-                        <div class="risk-severity severity-${severityClass.replace('risk-', '')}">${severityLabel}</div>
-                    </div>
-                    <div class="risk-metrics">
-                        <div class="metric"><div class="metric-value">${risk.probability || 0}</div><div class="metric-label">הסתברות</div></div>
-                        <div class="metric"><div class="metric-value">${risk.impact || 0}</div><div class="metric-label">נזק</div></div>
-                        <div class="metric"><div class="metric-value">${risk.severity || 0}</div><div class="metric-label">חומרה</div></div>
-                    </div>
-                    <div><strong>תיאור:</strong> ${risk.description}</div>
-                    <div style="margin-top: 15px;"><strong>השלכות:</strong> ${risk.impacts.join(', ')}</div>
-                    ${risk.opportunities.length ? `<div style="margin-top: 10px;"><strong>הזדמנויות:</strong> ${risk.opportunities.join(', ')}</div>` : ''}
-                </div>
-                `;
-            }).join('')}
-        </div>
-
-        <div class="section">
-            <h2 class="section-title">רמת חדשנות</h2>
-            <div class="innovation-score">
-                <div class="innovation-total">${safeData.innovationLevel.totalScore}</div>
-                <div>רמת החדשנות הכוללת</div>
-                <div class="innovation-breakdown">
-                    <div class="innovation-item"><div class="innovation-value">${safeData.innovationLevel.pedagogicalImpact}</div><div>השפעה פדגוגית</div></div>
-                    <div class="innovation-item"><div class="innovation-value">${safeData.innovationLevel.technologicalComplexity}</div><div>מורכבות טכנולוגית</div></div>
-                    <div class="innovation-item"><div class="innovation-value">${safeData.innovationLevel.organizationalChange}</div><div>שינוי ארגוני</div></div>
-                    <div class="innovation-item"><div class="innovation-value">${safeData.innovationLevel.technologicalRisk}</div><div>סיכון טכנולוגי</div></div>
-                </div>
-            </div>
-            <div style="margin-top: 20px;">
-                <h3>תיאור החדשנות</h3>
-                <p>${safeData.innovationDescription}</p>
-                <h3 style="margin-top: 15px;">המלצה לוועדה</h3>
-                <p>${safeData.committeeRecommendation}</p>
-            </div>
-        </div>
-
-        <div class="section">
-            <h2 class="section-title">סיכום מנהלים</h2>
-            <div>${safeData.executiveSummary}</div>
-        </div>
-
-        <div class="section">
-            <h2 class="section-title">המלצות לוועדה</h2>
-            ${safeData.recommendations.map(rec => `
-                <div class="recommendation-item">
-                    <div class="recommendation-header">${rec.title}</div>
-                    <div>${rec.description}</div>
-                </div>
-            `).join('')}
-        </div>
-
-        <div class="footer">
-            <p>דוח זה נוצר בתאריך ${new Date().toLocaleDateString('he-IL')} בשעה ${new Date().toLocaleTimeString('he-IL')}</p>
-            <p>מערכת EZRA 5.0 - מחולל דוחות ניהול סיכונים</p>
-        </div>
-    </div>
-
-    <script>
-        function getSeverityClass(severity) {
-            if (severity >= 81) return 'risk-very-high';
-            if (severity >= 49) return 'risk-high';
-            if (severity >= 25) return 'risk-medium';
-            return 'risk-low';
-        }
-        function getSeverityLabel(severity) {
-            if (severity >= 81) return 'גבוהה מאוד';
-            if (severity >= 49) return 'גבוהה';
-            if (severity >= 25) return 'בינונית';
-            return 'נמוכה';
-        }
-    </script>
-</body>
-</html>`;
-        }
-
-        function updateProgress(percent, text, step) {
-            progressFill.style.width = percent + '%';
-            progressText.textContent = percent + '%';
-
-            for (let i = 1; i <= 3; i++) {
-                const stepEl = document.getElementById(`step${i}`);
-                if (i < step) stepEl.className = 'progress-step completed';
-                else if (i === step) stepEl.className = 'progress-step active';
-                else stepEl.className = 'progress-step';
-            }
-        }
-
-        function delay(ms) { 
-            return new Promise(resolve => setTimeout(resolve, ms)); 
-        }
-
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        function showError(message) {
-            const existing = document.querySelector('.error-message');
-            if (existing) existing.remove();
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            errorDiv.textContent = message;
-            uploadSection.appendChild(errorDiv);
-            setTimeout(() => errorDiv.remove(), 5000);
-        }
-
-        function showSuccess(message) {
-            const existing = document.querySelector('.success-message');
-            if (existing) existing.remove();
-            const successDiv = document.createElement('div');
-            successDiv.className = 'success-message';
-            successDiv.textContent = message;
-            uploadSection.appendChild(successDiv);
-            setTimeout(() => successDiv.remove(), 3000);
-        }
-
-        function resetToUpload() {
-            progressSection.classList.add('hidden');
-            reportSection.classList.add('hidden');
-            uploadSection.classList.remove('hidden');
-            
-            selectedFile = null;
-            generateBtn.disabled = true;
-            uploadZone.innerHTML = `
-                <div class="upload-icon">📄</div>
-                <div class="upload-text">העלה מסמך תפיסה</div>
-                <div class="file-types">רק קבצי טקסט (.txt) • עד 5MB</div>
-            `;
-            
-            progressFill.style.width = '0%';
-            progressText.textContent = '0%';
-            
-            for (let i = 1; i <= 3; i++) {
-                document.getElementById(`step${i}`).className = 'progress-step';
-            }
-        }
-    </script>
-</body>
-</html>
+  } catch (error) {
+    console.error('Error in analyze handler:', error);
+    console.error('Error stack:', error.stack);
+    
+    if (!res.writableEnded && !res.headersSent) {
+      res.status(500).json({ 
+        error: 'Failed to process request',
+        details: error.message,
+        type: error.constructor.name
+      });
+    }
+  }
+}
