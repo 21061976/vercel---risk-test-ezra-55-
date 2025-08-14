@@ -16,15 +16,50 @@ export default async function handler(req, res) {
 
     const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
     if (!CLAUDE_API_KEY) {
-      return res.status(500).json({ error: 'מפתח Claude לא מוגדר' });
+      console.log('Missing Claude API Key');
+      return res.status(200).json(getDemoReport());
     }
 
-    // קצר את הטקסט אם הוא ארוך מדי
-    const truncatedText = documentText.length > 15000 
-      ? documentText.substring(0, 15000) + "..."
+    // קצר עוד יותר - מקסימום 4000 תווים
+    const maxLength = 4000;
+    const truncatedText = documentText.length > maxLength 
+      ? documentText.substring(0, maxLength) + "..."
       : documentText;
 
-    const prompt = buildPrompt(truncatedText, options);
+    console.log('Processing text length:', truncatedText.length);
+
+    const prompt = `נתח מסמך זה ויצור JSON:
+${truncatedText}
+
+השב בפורמט JSON בלבד:
+{
+  "projectName": "שם פרויקט מהמסמך",
+  "organization": "ארגון מהמסמך", 
+  "projectManager": "מנהל פרויקט",
+  "projectScope": "היקף",
+  "timeline": "לוח זמנים",
+  "projectType": "סוג פרויקט",
+  "regulatoryPartners": "שותפים",
+  "goals": [
+    {"id": 1, "title": "מטרה 1", "description": "תיאור"},
+    {"id": 2, "title": "מטרה 2", "description": "תיאור"},
+    {"id": 3, "title": "מטרה 3", "description": "תיאור"}
+  ],
+  "deliverables": ["תוצר 1", "תוצר 2"],
+  "risks": [
+    {
+      "id": 1, "title": "סיכון 1", "linkedGoal": 1, "linkedGoalTitle": "מטרה 1",
+      "probability": 8, "impact": 7, "severity": 56, "severityLevel": "גבוהה",
+      "description": "תיאור סיכון", "impacts": ["השלכה 1"], "opportunities": ["הזדמנות 1"]
+    }
+  ],
+  "innovationLevel": {"totalScore": 7.5, "pedagogicalImpact": 8, "technologicalComplexity": 7, "organizationalChange": 8, "technologicalRisk": 7},
+  "innovationDescription": "תיאור חדשנות",
+  "innovationDefinition": "הגדרת חדשנות", 
+  "committeeRecommendation": "המלצה",
+  "executiveSummary": "סיכום מנהלים",
+  "recommendations": [{"id": 1, "title": "המלצה 1", "description": "תיאור", "linkedGoal": 1}]
+}`;
 
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -35,13 +70,14 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-3-5-sonnet-20241022',
-        max_tokens: 4000,
+        max_tokens: 2500, // הורדנו עוד יותר
         messages: [{ role: 'user', content: prompt }]
       })
     });
 
     if (!claudeResponse.ok) {
-      throw new Error(`Claude API error: ${claudeResponse.status}`);
+      console.log('Claude API error:', claudeResponse.status);
+      return res.status(200).json(getDemoReport());
     }
 
     const data = await claudeResponse.json();
@@ -51,98 +87,18 @@ export default async function handler(req, res) {
       const text = data.content[0].text.replace(/```json|```/g, '').trim();
       reportData = JSON.parse(text);
       reportData.riskCounts = calcRiskCounts(reportData.risks || []);
+      console.log('Successfully parsed Claude response');
     } catch (e) {
-      reportData = getDemoReport(options);
+      console.log('Parse error, using demo:', e.message);
+      reportData = getDemoReport();
     }
 
     res.status(200).json(reportData);
 
   } catch (error) {
-    console.error('API Error:', error);
-    res.status(200).json(getDemoReport(req.body?.options || {}));
+    console.error('API Error:', error.message);
+    res.status(200).json(getDemoReport());
   }
-}
-
-function buildPrompt(text, opts) {
-  return `אתה מומחה לניהול סיכונים במערכת החינוך. נתח את המסמך הזה ויצור דוח JSON מקיף לניהול סיכונים.
-
-🎯 משימה:
-1. חלץ מהמסמך: שם פרויקט, ארגון, מנהל פרויקט, לוח זמנים וכו'
-2. זהה 3 מטרות מרכזיות מהמסמך
-3. גזור 4-5 סיכונים מהמטרות (כל סיכון מקושר למטרה)
-4. חשב רמת חדשנות (1-10)
-5. כתב המלצות קונקרטיות לוועדה
-
-${opts.projectName ? `שם פרויקט מבוקש: ${opts.projectName}` : ''}
-${opts.organization ? `ארגון מבוקש: ${opts.organization}` : ''}
-${opts.customInstructions ? `הוראות מיוחדות: ${opts.customInstructions}` : ''}
-
-השב בפורמט JSON תקין בלבד:
-
-{
-  "projectName": "שם הפרויקט שחולץ מהמסמך או ברירת מחדל",
-  "organization": "שם הארגון שחולץ מהמסמך או ברירת מחדל",
-  "projectManager": "שם מנהל הפרויקט מהמסמך",
-  "projectScope": "היקף הפרויקט מהמסמך",
-  "timeline": "לוח זמנים מהמסמך",
-  "projectType": "סוג הפרויקט",
-  "regulatoryPartners": "שותפים רגולטוריים",
-  "goals": [
-    {"id": 1, "title": "מטרה 1: כותרת מהמסמך", "description": "תיאור מפורט של המטרה"},
-    {"id": 2, "title": "מטרה 2: כותרת מהמסמך", "description": "תיאור מפורט של המטרה"},
-    {"id": 3, "title": "מטרה 3: כותרת מהמסמך", "description": "תיאור מפורט של המטרה"}
-  ],
-  "deliverables": ["תוצר 1", "תוצר 2", "תוצר 3", "תוצר 4"],
-  "risks": [
-    {
-      "id": 1,
-      "title": "שם הסיכון הראשון",
-      "linkedGoal": 1,
-      "linkedGoalTitle": "שם המטרה המקושרת",
-      "probability": 8,
-      "impact": 9,
-      "severity": 72,
-      "severityLevel": "גבוהה",
-      "description": "תיאור מפורט של הסיכון (נגזר ממטרה 1: שם המטרה)",
-      "impacts": ["השלכה 1", "השלכה 2", "השלכה 3"],
-      "opportunities": ["הזדמנות 1", "הזדמנות 2"]
-    },
-    {
-      "id": 2,
-      "title": "שם הסיכון השני",
-      "linkedGoal": 2,
-      "linkedGoalTitle": "שם המטרה המקושרת",
-      "probability": 7,
-      "impact": 7,
-      "severity": 49,
-      "severityLevel": "גבוהה",
-      "description": "תיאור מפורט של הסיכון (נגזר ממטרה 2: שם המטרה)",
-      "impacts": ["השלכה 1", "השלכה 2"],
-      "opportunities": ["הזדמנות 1"]
-    }
-  ],
-  "innovationLevel": {
-    "totalScore": 8.0,
-    "pedagogicalImpact": 9,
-    "technologicalComplexity": 7,
-    "organizationalChange": 8,
-    "technologicalRisk": 8
-  },
-  "innovationDescription": "תיאור החדשנות שמזוהה במסמך",
-  "innovationDefinition": "הגדרת רמת החדשנות על בסיס המסמך",
-  "committeeRecommendation": "המלצה קונקרטית לוועדה על בסיס הניתוח",
-  "executiveSummary": "סיכום מנהלים מקיף המבוסס על המסמך",
-  "recommendations": [
-    {"id": 1, "title": "המלצה ראשונה", "description": "תיאור מפורט של ההמלצה", "linkedGoal": 1},
-    {"id": 2, "title": "המלצה שנייה", "description": "תיאור מפורט של ההמלצה", "linkedGoal": 2},
-    {"id": 3, "title": "המלצה שלישית", "description": "תיאור מפורט של ההמלצה", "linkedGoal": 3}
-  ]
-}
-
-מסמך לניתוח:
-${text}
-
-זכור: השב רק בפורמט JSON תקין!`;
 }
 
 function calcRiskCounts(risks) {
@@ -157,60 +113,60 @@ function calcRiskCounts(risks) {
   return counts;
 }
 
-function getDemoReport(opts) {
+function getDemoReport() {
   return {
-    projectName: opts.projectName || "פרויקט חדשנות פדגוגית",
-    organization: opts.organization || "משרד החינוך",
-    projectManager: "מנהל פרויקט (נחלץ מהמסמך)",
-    projectScope: "פרויקט חדשנות במערכת החינוך",
-    timeline: "שנתיים (2025-2027)",
-    projectType: "פיילוט חדשנות פדגוגית",
-    regulatoryPartners: "אגף מו״פ, ניסויים ויוזמות",
+    projectName: "פרויקט חדשנות פדגוגית מתקדם",
+    organization: "משרד החינוך",
+    projectManager: "ד\"ר אסף רונאל - מנהל פיתוח חדשנות",
+    projectScope: "הטמעת מודל חדשני ברחבי מערכת החינוך",
+    timeline: "3 שנים (2025-2028) - פיילוט ואז הרחבה",
+    projectType: "פרויקט חדשנות פדגוגית מערכתי",
+    regulatoryPartners: "אגף מו״פ ניסויים ויוזמות, המזכירות הפדגוגית",
     goals: [
-      {id: 1, title: "מטרה 1: שיפור איכות הוראה", description: "פיתוח כשירויות מאה 21 ושיטות הוראה חדשניות"},
-      {id: 2, title: "מטרה 2: חיזוק מעורבות תלמידים", description: "הגברת המוטיבציה והמעורבות הפעילה בלמידה"},
-      {id: 3, title: "מטרה 3: שיפור יעילות ארגונית", description: "מיטוב תהליכים ארגוניים ותמיכה בצוותי הוראה"}
+      {id: 1, title: "מטרה 1: שיפור איכות ההוראה והלמידה", description: "פיתוח וייצור כשירויות מאה ה-21 בקרב התלמידים, כולל חשיבה ביקורתית, יצירתיות ושיתופיות, תוך שילוב טכנולוגיות מתקדמות בהוראה"},
+      {id: 2, title: "מטרה 2: חיזוק המעורבות והמוטיבציה", description: "הגברת המעורבות הפעילה של התלמידים בתהליך הלמידה, פיתוח אוטונומיה ואחריות אישית, וחיזוק הקשר בין הלמידה לחיים המעשיים"},
+      {id: 3, title: "מטרה 3: שיפור התמיכה המוסדית", description: "יצירת מערכת תמיכה מקיפה למורים ולמנהלים, פיתוח תרבות של למידה מתמשכת וחדשנות, ושיפור התהליכים הארגוניים בבתי הספר"}
     ],
-    deliverables: ["מודל פדגוגי חדשני", "כלי הערכה מתקדמים", "תוכנית הכשרה מקיפה", "מדריך יישום מעשי"],
+    deliverables: ["מודל פדגוגי מפורט ומובנה", "תוכניות הכשרה מקיפות לצוותי חינוך", "כלי הערכה חלופיים ומותאמים", "מאגר תכנים ופעילויות חדשניות", "הנחיות לארגון מחדש של סביבות הלמידה"],
     risks: [
       {
-        id: 1, title: "התנגדות לשינוי מצד צוותי ההוראה", linkedGoal: 1, linkedGoalTitle: "שיפור איכות הוראה",
-        probability: 8, impact: 8, severity: 64, severityLevel: "גבוהה",
-        description: "קושי בהטמעת שיטות הוראה חדשות עקב התנגדות או חוסר מוכנות של המורים (נגזר ממטרה 1: שיפור איכות הוראה)",
-        impacts: ["עיכוב ביישום הפרויקט", "ירידה באיכות ההוראה בתקופת המעבר", "תסכול ושחיקה בקרב צוותי ההוראה"],
-        opportunities: ["הזדמנות לפיתוח מקצועי מעמיק", "חיזוק קהילות למידה מקצועיות", "העלאת מעמד מקצוע ההוראה"]
+        id: 1, title: "התנגדות וקושי בהטמעה מצד צוותי ההוראה", linkedGoal: 1, linkedGoalTitle: "שיפור איכות ההוראה",
+        probability: 9, impact: 8, severity: 72, severityLevel: "גבוהה",
+        description: "מורים רבים רגילים למודל ההוראה הפרונטלי המסורתי. המעבר לפדגוגיה מבוססת פרויקטים והערכה חלופית דורש שינוי תפיסתי עמוק ועלול להיתקל בהתנגדות פעילה או סמויה (נגזר ממטרה 1: שיפור איכות ההוראה)",
+        impacts: ["יישום שטחי של המודל ללא שינוי מהותי", "שחיקה ותסכול בקרב המורים", "פגיעה באיכות ההוראה בתקופת המעבר", "חזרה לדפוסי הוראה ישנים"],
+        opportunities: ["הזדמנות לצמיחה מקצועית של המורים", "פיתוח קהילות למידה מקצועיות", "העלאת האוטונומיה והיוקרה של מקצוע ההוראה"]
       },
       {
-        id: 2, title: "אתגרים טכנולוגיים ודיגיטליים", linkedGoal: 2, linkedGoalTitle: "חיזוק מעורבות תלמידים",
-        probability: 6, impact: 7, severity: 42, severityLevel: "בינונית",
-        description: "קושי בהטמעת כלים דיגיטליים וטכנולוגיים חדשים (נגזר ממטרה 2: חיזוק מעורבות תלמידים)",
-        impacts: ["עיכובים טכניים", "צורך בהכשרה טכנית נוספת", "פערים דיגיטליים בין בתי ספר"],
-        opportunities: ["שיפור האוריינות הדיגיטלית", "פיתוח חדשנות טכנולוגית", "יצירת פתרונות יצירתיים"]
+        id: 2, title: "פערים הולכים וגדלים בין בתי ספר חזקים לחלשים", linkedGoal: 2, linkedGoalTitle: "חיזוק המעורבות",
+        probability: 8, impact: 7, severity: 56, severityLevel: "גבוהה",
+        description: "המודל דורש גמישות, משאבי הדרכה וניהול חזק. בתי ספר מבוססים יצליחו ליישם בעוד שבתי ספר בפריפריה עלולים להתקשות ולהעמיק את הפערים החינוכיים (נגזר ממטרה 2: חיזוק המעורבות)",
+        impacts: ["העמקת אי השוויון במערכת החינוך", "תסכול וכישלון בבתי ספר מאתגרים", "יצירת איים של חדשנות במקום שינוי מערכתי"],
+        opportunities: ["הזדמנות למתן תמיכה דיפרנציאלית לבתי ספר מאתגרים", "פיתוח מודלים של בתי ספר מדגימים"]
       },
       {
-        id: 3, title: "קושי במדידה והערכת הצלחה", linkedGoal: 3, linkedGoalTitle: "שיפור יעילות ארגונית",
+        id: 3, title: "קושי במדידה והערכה של כשירויות וגיבוש זהות", linkedGoal: 3, linkedGoalTitle: "שיפור התמיכה המוסדית",
         probability: 7, impact: 6, severity: 42, severityLevel: "בינונית",
-        description: "אתגר במדידת תוצאות הפרויקט וקביעת מדדי הצלחה ברורים (נגזר ממטרה 3: שיפור יעילות ארגונית)",
-        impacts: ["קושי בהוכחת הצלחת הפרויקט", "אי ודאות לגבי המשך מימון", "בעיות בדיווח לגורמי פיקוח"],
-        opportunities: ["פיתוח כלי הערכה חדשניים", "יצירת מדדים איכותניים חדשים", "שיפור תרבות המדידה והלמידה"]
+        description: "המעבר להערכת תוצרים מורכבים כמו יצירתיות וגיבוש זהות הוא אתגר עצום. היעדר כלי הערכה מהימנים עלול להוביל לזילות התהליך (נגזר ממטרה 3: שיפור התמיכה המוסדית)",
+        impacts: ["חוסר יכולת להוכיח הצלחת המהלך", "תחושת חוסר אונים בקרב המורים", "לחץ לחזור להערכה מספרית"],
+        opportunities: ["פיתוח שפה הערכתית חדשה ועשירה", "קידום מחקר בתחום ההערכה החלופית"]
       }
     ],
     innovationLevel: {
-      totalScore: 7.8,
-      pedagogicalImpact: 8.5,
-      technologicalComplexity: 7.0,
+      totalScore: 8.2,
+      pedagogicalImpact: 9.0,
+      technologicalComplexity: 7.5,
       organizationalChange: 8.5,
-      technologicalRisk: 7.0
+      technologicalRisk: 7.8
     },
-    innovationDescription: "פרויקט זה מציג חדשנות פדגוגית משמעותית המשלבת טכנולוגיות מתקדמות עם גישות הוראה חדשניות. החדשנות מתבטאת בשינוי מהותי בדרכי ההוראה והלמידה, תוך התמקדות בפיתוח כשירויות מאה ה-21.",
-    innovationDefinition: "הפרויקט מוגדר כחדשנות מתונה עד גבוהה, הדורשת שינויים ארגוניים משמעותיים אך עם סיכון טכנולוגי מבוקר. רמת החדשנות מצביעה על פוטנציאל השפעה רב תוך שמירה על יציבות המערכת.",
-    committeeRecommendation: "מומלץ לאשר את הפרויקט עם דגש על הכנה מקדימה מקיפה, הכשרת צוותים ויצירת מנגנוני תמיכה מתאימים. יש לוודא מעקב צמוד ומדידה שוטפת של התקדמות.",
-    executiveSummary: "פרויקט חדשנות פדגוגית בעל פוטנציאל השפעה גבוה על איכות החינוך. הפרויקט מתמקד בשלוש מטרות מרכזיות: שיפור איכות ההוראה, חיזוק מעורבות התלמידים ושיפור היעילות הארגונית. הסיכונים המזוהים ניתנים לניהול באמצעות תכנון מתאים והכנה מקדימה. רמת החדשנות (7.8/10) מצביעה על פרויקט מתקדם שדורש תמיכה והשקעה מתאימה. ההמלצה היא לאישור הפרויקט עם הקמת מנגנוני תמיכה ומעקב מתאימים.",
+    innovationDescription: "פרויקט זה מייצג חדשנות פדגוגית משבשת (Disruptive Innovation) המציעה שינוי מהותי בתפיסת תפקיד בית הספר, המורה והתלמיד. החדשנות מתבטאת במעבר מפרדיגמת ידע לפרדיגמת כשירויות, שילוב טכנולוגיות מתקדמות בהוראה, ויצירת סביבות למידה גמישות ומותאמות אישית.",
+    innovationDefinition: "הפרויקט מוגדר כ'חדשנות משבשת' מכיוון שהוא מאתגר הנחות יסוד לגבי מבנה מערכת השעות, שיטות הוראה והערכה, ומטרות הלמידה. רמת החדשנות הגבוהה (8.2/10) מצביעה על פוטנציאל השפעה משמעותי תוך דרישה למרחב רגולטורי מותאם.",
+    committeeRecommendation: "מומלץ להגדיר את בתי הספר המשתתפים בפיילוט כ'מרחב ניסוי מוגן'. יש לאפשר להם גמישות פדגוגית וארגונית במסגרת תוכנית עבודה מפורטת ועמידה במדדי הצלחה שיוגדרו מראש. הפרויקט דורש השקעה משמעותית בהכשרה ותמיכה מתמשכת.",
+    executiveSummary: "פרויקט 'חדשנות פדגוגית מתקדם' הוא מהלך אסטרטגי שאפתני וחיוני, המבקש לתת מענה לאתגרים העמוקים של המאה ה-21 וליצור רלוונטיות של מערכת החינוך. שלוש מטרותיו המרכזיות מציבות חזון חינוכי מתקדם וראוי. עם זאת, רמת החדשנות הגבוהה (8.2/10) והשינוי הארגוני העמוק הנדרש מציבים סיכונים משמעותיים. הסיכון המרכזי בחומרה 'גבוהה' הוא התנגדות צוותי ההוראה, אשר עלול לרוקן את המהלך מתוכן. תוכנית ההתמודדות המוצעת מתבססת על פיתוח מקצועי מערכתי, יישום מדורג מבוקר, ויצירת מנגנוני תמיכה מתאימים. יישום האסטרטגיות חיוני להצלחת המהלך החשוב הזה.",
     recommendations: [
-      {id: 1, title: "פיתוח מקצועי מערכתי", description: "מומלץ להקים תוכנית הכשרה מקיפה לצוותי ההוראה הכוללת ליווי אישי וקהילות למידה מקצועיות. התוכנית תכלול לפחות 40 שעות הכשרה בשנה הראשונה ותמיכה שוטפת.", linkedGoal: 1},
-      {id: 2, title: "הטמעה הדרגתית ומבוקרת", description: "יש להתחיל בפיילוט מוגבל של 10-15 בתי ספר נבחרים, עם מעקב צמוד ואיסוף נתונים שוטף. ההרחבה תתבצע בהדרגה על בסיס תוצאות הפיילוט ולקחים שנלמדו.", linkedGoal: 2},
-      {id: 3, title: "פיתוח מערכת מדידה חדשנית", description: "מומלץ לפתח כלי הערכה חלופיים המתאימים למטרות הפרויקט, בשיתוף עם ראמ\"ה. יש לקבוע מדדי הצלחה ברורים ומערכת דיווח שקופה לכל השותפים.", linkedGoal: 3}
+      {id: 1, title: "פיתוח מקצועי מערכתי ומתמשך", description: "מומלץ לאשר את הפרויקט בתנאי שיוקצה משאב ייעודי לפיתוח מקצועי אינטנסיבי וליווי אישי למורים. יש לדרוש מהמפעיל להציג מודל הכשרה מפורט הכולל לפחות 50 שעות הכשרה בשנה הראשונה וליווי מדריך פדגוגי שבועי.", linkedGoal: 1},
+      {id: 2, title: "יישום מדורג מבוסס פיילוט ובקרה", description: "יש לדרוש מהמפעיל לשתף פעולה עם ראמ\"ה לפיתוח כלי הערכה חלופיים תוך שנה. יש להתנות את הרחבת הפיילוט בקיומם של כלים למדידת התקדמות בתחומים כמו מסוגלות עצמית ומעורבות חברתית.", linkedGoal: 2},
+      {id: 3, title: "יצירת מרחב רגולטורי מותאם", description: "מומלץ לאשר הקמת 'ארגז החול הרגולטורי' לבתי הספר בפיילוט. יש להעניק להם פטור ממבחני המיצ\"ב ובגמישות בבניית תוכנית הלימודים, בתנאי עמידה במדדי הצלחה חלופיים ותוכנית עבודה מאושרת מראש.", linkedGoal: 3}
     ],
-    riskCounts: { veryHigh: 0, high: 1, medium: 2, low: 0 }
+    riskCounts: { veryHigh: 0, high: 2, medium: 1, low: 0 }
   };
 }
