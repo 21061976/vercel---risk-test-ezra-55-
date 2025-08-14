@@ -1,4 +1,11 @@
 {
+  "name": "ezra-risk-generator",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "echo 'Build complete'"
+  },
+  "dependencies": {},
   "engines": {
     "node": "22.x"
   }
