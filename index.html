@@ -5,273 +5,103 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EZRA 5.0 - מחולל דוחות ניהול סיכונים</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
-            direction: rtl;
+            min-height: 100vh; color: #333; direction: rtl;
         }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
-        }
-
-        .header h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .header .subtitle {
-            font-size: 1.2em;
-            opacity: 0.9;
-        }
-
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; color: white; margin-bottom: 40px; }
+        .header h1 { font-size: 3em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .header .subtitle { font-size: 1.2em; opacity: 0.9; }
+        
         .upload-section {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-            transition: all 0.3s ease;
+            background: white; border-radius: 20px; padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1); margin-bottom: 30px; transition: all 0.3s ease;
         }
-
         .upload-zone {
-            border: 3px dashed #667eea;
-            border-radius: 15px;
-            padding: 60px 20px;
+            border: 3px dashed #667eea; border-radius: 15px; padding: 60px 20px;
+            text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8f9fa;
+        }
+        .upload-zone:hover { border-color: #5a6fd8; background: #e3f2fd; transform: translateY(-2px); }
+        .upload-zone.dragover { border-color: #4caf50; background: #e8f5e8; }
+        .upload-icon { font-size: 4em; color: #667eea; margin-bottom: 20px; }
+        .upload-text { font-size: 1.3em; color: #555; margin-bottom: 15px; }
+        .file-types { color: #888; font-size: 0.9em; }
+        .file-input { display: none; }
+
+        .optional-details {
+            margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 15px;
+            border: 2px dashed #ddd;
+        }
+        .optional-title {
+            font-size: 1.1em; font-weight: bold; color: #667eea; margin-bottom: 10px;
             text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: #f8f9fa;
         }
-
-        .upload-zone:hover {
-            border-color: #5a6fd8;
-            background: #e3f2fd;
-            transform: translateY(-2px);
+        .optional-subtitle {
+            font-size: 0.9em; color: #666; text-align: center; margin-bottom: 15px;
         }
-
-        .upload-zone.dragover {
-            border-color: #4caf50;
-            background: #e8f5e8;
+        .project-details { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #333; }
+        .input-group input, .input-group textarea {
+            width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px;
+            font-size: 1em; transition: border-color 0.3s ease;
         }
-
-        .upload-icon {
-            font-size: 4em;
-            color: #667eea;
-            margin-bottom: 20px;
-        }
-
-        .upload-text {
-            font-size: 1.3em;
-            color: #555;
-            margin-bottom: 15px;
-        }
-
-        .file-types {
-            color: #888;
-            font-size: 0.9em;
-        }
-
-        .file-input {
-            display: none;
-        }
-
-        .project-details {
-            margin-top: 30px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .input-group input,
-        .input-group textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            font-size: 1em;
-            transition: border-color 0.3s ease;
-        }
-
-        .input-group input:focus,
-        .input-group textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
+        .input-group input:focus, .input-group textarea:focus { outline: none; border-color: #667eea; }
 
         .generate-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 1.2em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
-            margin-top: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;
+            padding: 15px 30px; border-radius: 25px; font-size: 1.2em; font-weight: bold;
+            cursor: pointer; transition: all 0.3s ease; width: 100%; margin-top: 20px;
         }
-
-        .generate-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-        }
-
-        .generate-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
+        .generate-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4); }
+        .generate-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
 
         .progress-section {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-            display: none;
+            background: white; border-radius: 20px; padding: 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px; display: none;
         }
-
-        .progress-title {
-            text-align: center;
-            font-size: 1.5em;
-            margin-bottom: 30px;
-            color: #333;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #f0f0f0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 20px;
-        }
-
+        .progress-title { text-align: center; font-size: 1.5em; margin-bottom: 30px; color: #333; }
+        .progress-bar { width: 100%; height: 20px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
         .progress-fill {
-            height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            width: 0%;
-            transition: width 0.5s ease;
-            border-radius: 10px;
+            height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%; transition: width 0.5s ease; border-radius: 10px;
         }
-
-        .progress-text {
-            text-align: center;
-            font-weight: bold;
-            color: #555;
-        }
-
-        .progress-steps {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-            margin-top: 30px;
-        }
-
+        .progress-text { text-align: center; font-weight: bold; color: #555; }
+        .progress-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 30px; }
         .progress-step {
-            text-align: center;
-            padding: 20px;
-            border-radius: 15px;
-            background: #f8f9fa;
-            transition: all 0.3s ease;
+            text-align: center; padding: 20px; border-radius: 15px; background: #f8f9fa; transition: all 0.3s ease;
         }
+        .progress-step.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; transform: scale(1.05); }
+        .progress-step.completed { background: #4caf50; color: white; }
+        .step-icon { font-size: 2em; margin-bottom: 10px; }
 
-        .progress-step.active {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            transform: scale(1.05);
+        .report-section { display: none; }
+        .show { display: block !important; }
+        .error-message { background: #ffebee; color: #c62828; padding: 15px; border-radius: 10px; margin: 20px 0; border-right: 4px solid #f44336; }
+        .success-message { background: #e8f5e8; color: #2e7d32; padding: 15px; border-radius: 10px; margin: 20px 0; border-right: 4px solid #4caf50; }
+        .back-btn {
+            background: #95a5a6; color: white; border: none; padding: 12px 25px; border-radius: 25px;
+            cursor: pointer; font-weight: bold; margin-bottom: 20px; transition: all 0.3s ease;
         }
-
-        .progress-step.completed {
-            background: #4caf50;
-            color: white;
-        }
-
-        .step-icon {
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-
-        .report-section {
-            display: none;
-        }
-
-        .show {
-            display: block !important;
-        }
-
-        .error-message {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border-right: 4px solid #f44336;
-        }
-
-        .success-message {
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border-right: 4px solid #4caf50;
-        }
+        .back-btn:hover { background: #7f8c8d; transform: translateY(-2px); }
 
         @media (max-width: 768px) {
-            .project-details {
-                grid-template-columns: 1fr;
-            }
-            
-            .progress-steps {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .header h1 {
-                font-size: 2em;
-            }
+            .project-details { grid-template-columns: 1fr; }
+            .progress-steps { grid-template-columns: repeat(2, 1fr); }
+            .header h1 { font-size: 2em; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <div class="header">
             <h1>🎯 EZRA 5.0</h1>
             <div class="subtitle">מחולל דוחות ניהול סיכונים חכם עם AI</div>
         </div>
 
-        <!-- Upload Section -->
         <div class="upload-section" id="uploadSection">
             <div class="upload-zone" id="uploadZone">
                 <div class="upload-icon">📄</div>
@@ -280,56 +110,44 @@
                 <input type="file" id="fileInput" class="file-input" accept=".pdf,.docx,.doc,.txt">
             </div>
 
-            <div class="project-details">
-                <div class="input-group">
-                    <label for="projectName">שם הפרויקט</label>
-                    <input type="text" id="projectName" placeholder="הכנס שם פרויקט...">
-                </div>
-                <div class="input-group">
-                    <label for="organization">ארגון</label>
-                    <input type="text" id="organization" placeholder="שם הארגון...">
-                </div>
-                <div class="input-group" style="grid-column: 1 / -1;">
-                    <label for="customInstructions">הוראות מיוחדות (אופציונלי)</label>
-                    <textarea id="customInstructions" placeholder="הוראות מיוחדות לניתוח..." rows="3"></textarea>
+            <div class="optional-details">
+                <div class="optional-title">🔧 פרטים נוספים (אופציונלי)</div>
+                <div class="optional-subtitle">המערכת תחלץ את הפרטים מהמסמך באופן אוטומטי. מלא רק אם רוצה לדרוס.</div>
+                
+                <div class="project-details">
+                    <div class="input-group">
+                        <label for="projectName">שם הפרויקט (אופציונלי)</label>
+                        <input type="text" id="projectName" placeholder="ישולם מהמסמך...">
+                    </div>
+                    <div class="input-group">
+                        <label for="organization">ארגון (אופציונלי)</label>
+                        <input type="text" id="organization" placeholder="ישולם מהמסמך...">
+                    </div>
+                    <div class="input-group" style="grid-column: 1 / -1;">
+                        <label for="customInstructions">הוראות מיוחדות (אופציונלי)</label>
+                        <textarea id="customInstructions" placeholder="הוראות מיוחדות לניתוח..." rows="3"></textarea>
+                    </div>
                 </div>
             </div>
 
-            <button class="generate-btn" id="generateBtn" disabled>
-                📊 צור דוח ניהול סיכונים
-            </button>
+            <button class="generate-btn" id="generateBtn" disabled>📊 צור דוח ניהול סיכונים</button>
         </div>
 
-        <!-- Progress Section -->
         <div class="progress-section" id="progressSection">
             <div class="progress-title">מייצר דוח ניהול סיכונים...</div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-            </div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
             <div class="progress-text" id="progressText">0%</div>
             
             <div class="progress-steps">
-                <div class="progress-step" id="step1">
-                    <div class="step-icon">📤</div>
-                    <div>העלאת קובץ</div>
-                </div>
-                <div class="progress-step" id="step2">
-                    <div class="step-icon">🔍</div>
-                    <div>ניתוח מסמך</div>
-                </div>
-                <div class="progress-step" id="step3">
-                    <div class="step-icon">🤖</div>
-                    <div>עיבוד AI</div>
-                </div>
-                <div class="progress-step" id="step4">
-                    <div class="step-icon">📊</div>
-                    <div>יצירת דוח</div>
-                </div>
+                <div class="progress-step" id="step1"><div class="step-icon">📤</div><div>העלאת קובץ</div></div>
+                <div class="progress-step" id="step2"><div class="step-icon">🔍</div><div>ניתוח מסמך</div></div>
+                <div class="progress-step" id="step3"><div class="step-icon">🤖</div><div>עיבוד AI</div></div>
+                <div class="progress-step" id="step4"><div class="step-icon">📊</div><div>יצירת דוח</div></div>
             </div>
         </div>
 
-        <!-- Report Section -->
         <div class="report-section" id="reportSection">
+            <button class="back-btn" id="backBtn">🔙 חזור להעלאת קובץ חדש</button>
             <iframe id="reportFrame" style="width: 100%; height: 800px; border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></iframe>
         </div>
     </div>
@@ -344,16 +162,18 @@
         const reportSection = document.getElementById('reportSection');
         const progressFill = document.getElementById('progressFill');
         const progressText = document.getElementById('progressText');
+        const backBtn = document.getElementById('backBtn');
 
         let selectedFile = null;
 
-        // File Upload Handlers
+        // Event Listeners
         uploadZone.addEventListener('click', () => fileInput.click());
         uploadZone.addEventListener('dragover', handleDragOver);
         uploadZone.addEventListener('dragleave', handleDragLeave);
         uploadZone.addEventListener('drop', handleDrop);
         fileInput.addEventListener('change', handleFileSelect);
         generateBtn.addEventListener('click', generateReport);
+        backBtn.addEventListener('click', resetToUpload);
 
         function handleDragOver(e) {
             e.preventDefault();
@@ -368,17 +188,11 @@
         function handleDrop(e) {
             e.preventDefault();
             uploadZone.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
         }
 
         function handleFileSelect(e) {
-            const file = e.target.files[0];
-            if (file) {
-                handleFile(file);
-            }
+            if (e.target.files[0]) handleFile(e.target.files[0]);
         }
 
         function handleFile(file) {
@@ -389,7 +203,7 @@
                 return;
             }
 
-            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            if (file.size > 10 * 1024 * 1024) {
                 showError('הקובץ גדול מדי. מקסימום 10MB.');
                 return;
             }
@@ -401,7 +215,7 @@
                 <div class="file-types">${formatFileSize(file.size)}</div>
             `;
             generateBtn.disabled = false;
-            showSuccess('קובץ הועלה בהצלחה! מלא את הפרטים ולחץ לייצור הדוח.');
+            showSuccess('קובץ הועלה בהצלחה! לחץ לייצור הדוח (הפרטים יחולצו אוטומטית).');
         }
 
         async function generateReport() {
@@ -410,42 +224,28 @@
                 return;
             }
 
-            const projectName = document.getElementById('projectName').value;
-            const organization = document.getElementById('organization').value;
-
-            if (!projectName || !organization) {
-                showError('אנא מלא את שם הפרויקט והארגון');
-                return;
-            }
-
-            // Show progress
             uploadSection.style.display = 'none';
             progressSection.classList.add('show');
 
             try {
-                // Step 1: Upload
                 updateProgress(25, 'העלאת קובץ...', 1);
-                await simulateDelay(1000);
+                await delay(1000);
 
-                // Step 2: Analysis
                 updateProgress(50, 'ניתוח מסמך...', 2);
-                const documentText = await extractTextFromFile(selectedFile);
-                await simulateDelay(1500);
+                const documentText = await extractText(selectedFile);
+                await delay(1500);
 
-                // Step 3: AI Processing
                 updateProgress(75, 'עיבוד AI...', 3);
                 const reportData = await analyzeWithClaude(documentText, {
-                    projectName,
-                    organization,
-                    customInstructions: document.getElementById('customInstructions').value
+                    projectName: document.getElementById('projectName').value || '',
+                    organization: document.getElementById('organization').value || '',
+                    customInstructions: document.getElementById('customInstructions').value || ''
                 });
-                await simulateDelay(2000);
+                await delay(2000);
 
-                // Step 4: Generate Report
                 updateProgress(100, 'יצירת דוח...', 4);
-                await simulateDelay(1000);
+                await delay(1000);
 
-                // Show report
                 displayReport(reportData);
 
             } catch (error) {
@@ -459,37 +259,26 @@
             try {
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        documentText,
-                        options
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ documentText, options })
                 });
 
                 if (!response.ok) {
-                    throw new Error(`שגיאה בשרת: ${response.status}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `שגיאה בשרת: ${response.status}`);
                 }
 
                 return await response.json();
             } catch (error) {
                 console.error('שגיאה בקריאה ל-Claude:', error);
-                throw new Error('לא ניתן להתחבר לשירות הניתוח. אנא נסה שוב מאוחר יותר.');
+                throw new Error(error.message || 'לא ניתן להתחבר לשירות הניתוח. אנא נסה שוב מאוחר יותר.');
             }
         }
 
-        async function extractTextFromFile(file) {
+        async function extractText(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    if (file.type === 'text/plain') {
-                        resolve(e.target.result);
-                    } else {
-                        // For PDF and Word files, we'll send them to the server for processing
-                        resolve(e.target.result);
-                    }
-                };
+                reader.onload = (e) => resolve(file.type === 'text/plain' ? e.target.result : e.target.result);
                 reader.onerror = () => reject(new Error('שגיאה בקריאת הקובץ'));
                 
                 if (file.type === 'text/plain') {
@@ -503,48 +292,197 @@
         function displayReport(reportData) {
             progressSection.style.display = 'none';
             reportSection.classList.add('show');
-
-            // Generate HTML report
-            const reportHTML = generateReportHTML(reportData);
-            const reportFrame = document.getElementById('reportFrame');
-            reportFrame.srcdoc = reportHTML;
+            document.getElementById('reportFrame').srcdoc = generateReportHTML(reportData);
         }
 
         function generateReportHTML(data) {
-            // This will generate the full HTML report using the base template
-            // For now, we'll use the example template from the documents
-            return document.querySelector('script[type="text/html"]').textContent
-                .replace(/\{\{PROJECT_NAME\}\}/g, data.projectName || '')
-                .replace(/\{\{ORGANIZATION\}\}/g, data.organization || '')
-                .replace(/\{\{PROJECT_MANAGER\}\}/g, data.projectManager || '')
-                // Add more replacements as needed...
+            return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>דוח ניהול סיכונים - ${data.projectName}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; color: #333; direction: rtl; background: #f5f7fa; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; text-align: center; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .section { padding: 30px; border-bottom: 1px solid #eee; }
+        .section-title { font-size: 1.8em; color: #667eea; margin-bottom: 20px; border-bottom: 3px solid #667eea; padding-bottom: 10px; }
+        .project-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .info-item { padding: 15px; background: #f8f9fa; border-radius: 10px; border-right: 4px solid #667eea; }
+        .info-label { font-weight: bold; color: #667eea; margin-bottom: 5px; }
+        .goal-item { padding: 20px; background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border-radius: 10px; border-right: 5px solid #2196f3; margin-bottom: 15px; }
+        .risk-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+        .risk-counter { text-align: center; padding: 20px; border-radius: 10px; color: white; }
+        .risk-counter.very-high { background: #f44336; }
+        .risk-counter.high { background: #ff9800; }
+        .risk-counter.medium { background: #ffeb3b; color: #333; }
+        .risk-counter.low { background: #4caf50; }
+        .risk-counter .count { font-size: 2em; font-weight: bold; }
+        .risk-card { border-radius: 15px; padding: 25px; margin-bottom: 20px; border-right: 6px solid; }
+        .risk-very-high { background: #ffebee; border-right-color: #f44336; }
+        .risk-high { background: #fff3e0; border-right-color: #ff9800; }
+        .risk-medium { background: #fffde7; border-right-color: #ffeb3b; }
+        .risk-low { background: #e8f5e8; border-right-color: #4caf50; }
+        .risk-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .risk-severity { padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.9em; }
+        .severity-very-high { background: #f44336; color: white; }
+        .severity-high { background: #ff9800; color: white; }
+        .severity-medium { background: #ffeb3b; color: #333; }
+        .severity-low { background: #4caf50; color: white; }
+        .risk-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px; }
+        .metric { text-align: center; padding: 15px; background: rgba(255,255,255,0.7); border-radius: 10px; }
+        .metric-value { font-size: 1.5em; font-weight: bold; color: #667eea; }
+        .innovation-score { text-align: center; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px; margin-bottom: 20px; }
+        .innovation-total { font-size: 3em; font-weight: bold; margin-bottom: 10px; }
+        .innovation-breakdown { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; }
+        .innovation-item { text-align: center; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .innovation-value { font-size: 1.5em; font-weight: bold; }
+        .recommendation-item { border-right: 4px solid #667eea; padding: 20px; margin-bottom: 15px; background: #f8f9fa; border-radius: 10px; }
+        .recommendation-header { font-size: 1.2em; font-weight: bold; color: #667eea; margin-bottom: 10px; }
+        .footer { text-align: center; padding: 20px; background: #667eea; color: white; }
+        .print-btn { position: fixed; top: 20px; left: 20px; background: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; z-index: 1000; }
+        @media print { .print-btn { display: none; } }
+        @media (max-width: 768px) { .risk-summary { grid-template-columns: repeat(2, 1fr); } .innovation-breakdown { grid-template-columns: repeat(2, 1fr); } .risk-metrics { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">🖨️ הדפס</button>
+    <div class="container">
+        <div class="header">
+            <h1>דוח ניהול סיכונים</h1>
+            <div class="subtitle">${data.projectName} | ${data.organization}</div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">פרטי הפרויקט</h2>
+            <div class="project-info">
+                <div class="info-item"><div class="info-label">שם הפרויקט</div><div>${data.projectName}</div></div>
+                <div class="info-item"><div class="info-label">ארגון</div><div>${data.organization}</div></div>
+                <div class="info-item"><div class="info-label">מנהל פרויקט</div><div>${data.projectManager || 'לא צוין'}</div></div>
+                <div class="info-item"><div class="info-label">סוג פרויקט</div><div>${data.projectType || 'לא צוין'}</div></div>
+                <div class="info-item"><div class="info-label">לוח זמנים</div><div>${data.timeline || 'לא צוין'}</div></div>
+                <div class="info-item"><div class="info-label">שותפים רגולטוריים</div><div>${data.regulatoryPartners || 'לא צוין'}</div></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">מטרות הפרויקט</h2>
+            ${data.goals.map(goal => `<div class="goal-item"><strong>${goal.title}</strong><br>${goal.description}</div>`).join('')}
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">סיכום סיכונים</h2>
+            <div class="risk-summary">
+                <div class="risk-counter very-high"><div class="count">${data.riskCounts.veryHigh}</div><div class="label">גבוהה מאוד</div></div>
+                <div class="risk-counter high"><div class="count">${data.riskCounts.high}</div><div class="label">גבוהה</div></div>
+                <div class="risk-counter medium"><div class="count">${data.riskCounts.medium}</div><div class="label">בינונית</div></div>
+                <div class="risk-counter low"><div class="count">${data.riskCounts.low}</div><div class="label">נמוכה</div></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">ניתוח סיכונים מפורט</h2>
+            ${data.risks.map(risk => {
+                const severityClass = getSeverityClass(risk.severity);
+                const severityLabel = getSeverityLabel(risk.severity);
+                return `
+                <div class="risk-card ${severityClass}">
+                    <div class="risk-header">
+                        <div class="risk-title">${risk.title}</div>
+                        <div class="risk-severity severity-${severityClass.replace('risk-', '')}">${severityLabel}</div>
+                    </div>
+                    <div class="risk-metrics">
+                        <div class="metric"><div class="metric-value">${risk.probability}</div><div class="metric-label">הסתברות</div></div>
+                        <div class="metric"><div class="metric-value">${risk.impact}</div><div class="metric-label">נזק</div></div>
+                        <div class="metric"><div class="metric-value">${risk.severity}</div><div class="metric-label">חומרה</div></div>
+                    </div>
+                    <div><strong>תיאור:</strong> ${risk.description}</div>
+                    <div style="margin-top: 15px;"><strong>השלכות:</strong> ${risk.impacts.join(', ')}</div>
+                    ${risk.opportunities ? `<div style="margin-top: 10px;"><strong>הזדמנויות:</strong> ${risk.opportunities.join(', ')}</div>` : ''}
+                </div>
+                `;
+            }).join('')}
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">רמת חדשנות</h2>
+            <div class="innovation-score">
+                <div class="innovation-total">${data.innovationLevel.totalScore}</div>
+                <div>רמת החדשנות הכוללת</div>
+                <div class="innovation-breakdown">
+                    <div class="innovation-item"><div class="innovation-value">${data.innovationLevel.pedagogicalImpact}</div><div>השפעה פדגוגית</div></div>
+                    <div class="innovation-item"><div class="innovation-value">${data.innovationLevel.technologicalComplexity}</div><div>מורכבות טכנולוגית</div></div>
+                    <div class="innovation-item"><div class="innovation-value">${data.innovationLevel.organizationalChange}</div><div>שינוי ארגוני</div></div>
+                    <div class="innovation-item"><div class="innovation-value">${data.innovationLevel.technologicalRisk}</div><div>סיכון טכנולוגי</div></div>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <h3>תיאור החדשנות</h3>
+                <p>${data.innovationDescription}</p>
+                <h3 style="margin-top: 15px;">המלצה לוועדה</h3>
+                <p>${data.committeeRecommendation}</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">סיכום מנהלים</h2>
+            <div>${data.executiveSummary}</div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">המלצות לוועדה</h2>
+            ${data.recommendations.map(rec => `
+                <div class="recommendation-item">
+                    <div class="recommendation-header">${rec.title}</div>
+                    <div>${rec.description}</div>
+                </div>
+            `).join('')}
+        </div>
+
+        <div class="footer">
+            <p>דוח זה נוצר בתאריך ${new Date().toLocaleDateString('he-IL')} בשעה ${new Date().toLocaleTimeString('he-IL')}</p>
+            <p>מערכת EZRA 5.0 - מחולל דוחות ניהול סיכונים</p>
+        </div>
+    </div>
+
+    <script>
+        function getSeverityClass(severity) {
+            if (severity >= 81) return 'risk-very-high';
+            if (severity >= 49) return 'risk-high';
+            if (severity >= 25) return 'risk-medium';
+            return 'risk-low';
+        }
+        function getSeverityLabel(severity) {
+            if (severity >= 81) return 'גבוהה מאוד';
+            if (severity >= 49) return 'גבוהה';
+            if (severity >= 25) return 'בינונית';
+            return 'נמוכה';
+        }
+    </script>
+</body>
+</html>`;
         }
 
         function updateProgress(percent, text, step) {
             progressFill.style.width = percent + '%';
             progressText.textContent = percent + '%';
 
-            // Update steps
             for (let i = 1; i <= 4; i++) {
                 const stepEl = document.getElementById(`step${i}`);
-                if (i < step) {
-                    stepEl.className = 'progress-step completed';
-                } else if (i === step) {
-                    stepEl.className = 'progress-step active';
-                } else {
-                    stepEl.className = 'progress-step';
-                }
+                if (i < step) stepEl.className = 'progress-step completed';
+                else if (i === step) stepEl.className = 'progress-step active';
+                else stepEl.className = 'progress-step';
             }
         }
 
-        function simulateDelay(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
+        function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
@@ -552,24 +490,20 @@
         function showError(message) {
             const existing = document.querySelector('.error-message');
             if (existing) existing.remove();
-
             const errorDiv = document.createElement('div');
             errorDiv.className = 'error-message';
             errorDiv.textContent = message;
             uploadSection.appendChild(errorDiv);
-
             setTimeout(() => errorDiv.remove(), 5000);
         }
 
         function showSuccess(message) {
             const existing = document.querySelector('.success-message');
             if (existing) existing.remove();
-
             const successDiv = document.createElement('div');
             successDiv.className = 'success-message';
             successDiv.textContent = message;
             uploadSection.appendChild(successDiv);
-
             setTimeout(() => successDiv.remove(), 3000);
         }
 
@@ -578,21 +512,35 @@
             reportSection.style.display = 'none';
             uploadSection.style.display = 'block';
             
-            // Reset progress
+            selectedFile = null;
+            generateBtn.disabled = true;
+            uploadZone.innerHTML = `
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">גרור ושחרר קובץ או לחץ לבחירה</div>
+                <div class="file-types">תומך ב: PDF, Word (.docx), טקסט (.txt)</div>
+            `;
+            
             progressFill.style.width = '0%';
             progressText.textContent = '0%';
             
-            // Reset steps
             for (let i = 1; i <= 4; i++) {
                 document.getElementById(`step${i}`).className = 'progress-step';
             }
         }
-    </script>
 
-    <!-- Report Template -->
-    <script type="text/html">
-        <!-- This will contain the base report template -->
-        <!-- Will be loaded from the backend -->
+        function getSeverityClass(severity) {
+            if (severity >= 81) return 'risk-very-high';
+            if (severity >= 49) return 'risk-high';
+            if (severity >= 25) return 'risk-medium';
+            return 'risk-low';
+        }
+
+        function getSeverityLabel(severity) {
+            if (severity >= 81) return 'גבוהה מאוד';
+            if (severity >= 49) return 'גבוהה';
+            if (severity >= 25) return 'בינונית';
+            return 'נמוכה';
+        }
     </script>
 </body>
 </html>
