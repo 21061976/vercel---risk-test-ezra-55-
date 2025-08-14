@@ -2080,5 +2080,99 @@
 
         document.addEventListener('DOMContentLoaded', init);
     </script>
+    <script src="js/api-handler.js"></script>
+    <script>
+    // משתנים גלובליים
+    let apiHandler = null;
+    let API_KEY = null;
+
+    // פונקציה לבקש מפתח API
+    function requestAPIKey() {
+        const key = prompt('הכנס את מפתח ה-API של Claude:\n(המפתח יישמר רק בדפדפן שלך)');
+        if (key) {
+            API_KEY = key;
+            localStorage.setItem('claude_api_key', key);
+            apiHandler = new ClaudeAPIHandler(key);
+            return true;
+        }
+        return false;
+    }
+
+    // פונקציה לטעון מפתח שמור
+    function loadAPIKey() {
+        const savedKey = localStorage.getItem('claude_api_key');
+        if (savedKey) {
+            API_KEY = savedKey;
+            apiHandler = new ClaudeAPIHandler(savedKey);
+            return true;
+        }
+        return false;
+    }
+
+    // פונקציה לקרוא תוכן קובץ
+    async function readFileContent(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+        });
+    }
+
+    // פונקציה לעיבוד הנתונים מ-Claude
+    function formatReportData(apiData) {
+        return {
+            project: {
+                name: apiData.projectName,
+                manager: apiData.projectManager || 'לא צוין',
+                organization: apiData.organization || 'לא צוין',
+                scope: apiData.scope || 'לא צוין',
+                timeline: apiData.timeline || 'לא צוין',
+                type: apiData.projectType || 'לא צוין',
+                partners: apiData.partners || 'לא צוין'
+            },
+            goals: apiData.goals || [],
+            deliverables: apiData.deliverables || [],
+            risks: {
+                summary: calculateRiskSummary(apiData.risks),
+                list: apiData.risks || []
+            },
+            strategies: apiData.strategies || [],
+            executiveSummary: apiData.executiveSummary || '',
+            recommendations: apiData.recommendations || []
+        };
+    }
+
+    // פונקציה לחישוב סיכום סיכונים
+    function calculateRiskSummary(risks) {
+        const summary = { very_high: 0, high: 0, medium: 0, low: 0 };
+        if (!risks) return summary;
+        
+        risks.forEach(risk => {
+            if (risk.severity === 'very-high') summary.very_high++;
+            else if (risk.severity === 'high') summary.high++;
+            else if (risk.severity === 'medium') summary.medium++;
+            else if (risk.severity === 'low') summary.low++;
+        });
+        return summary;
+    }
+
+    // הוספת כפתור הגדרות
+    document.addEventListener('DOMContentLoaded', function() {
+        const settingsBtn = document.createElement('button');
+        settingsBtn.innerHTML = '⚙️ הגדרות API';
+        settingsBtn.className = 'control-btn';
+        settingsBtn.style.cssText = 'position: fixed; top: 200px; left: 20px; background: #95a5a6; color: white; border: none; padding: 15px 25px; border-radius: 25px; cursor: pointer; font-size: 1em; font-weight: bold; z-index: 1000;';
+        settingsBtn.onclick = function() {
+            if (confirm('האם למחוק את מפתח ה-API השמור?')) {
+                localStorage.removeItem('claude_api_key');
+                apiHandler = null;
+                API_KEY = null;
+                showMessage('✅ מפתח ה-API נמחק');
+            }
+        };
+        document.body.appendChild(settingsBtn);
+    });
+    </script>
 </body>
 </html>
