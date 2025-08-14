@@ -1,271 +1,89 @@
-export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+// In api/analyze.js
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+import Anthropic from '@anthropic-ai/sdk';
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+// ודא שמפתח ה-API שלך מוגדר כמשתנה סביבה ב-Vercel
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
+// הגדרת הפונקציה לרוץ כ-Edge Function כדי לתמוך בסטרימינג בצורה מיטבית
+export const config = {
+  runtime: 'edge',
+};
+
+export default async function handler(req) {
   try {
-    console.log('Request received:', req.body);
+    const { documentText, options } = await req.json();
 
-    const { documentText, options = {} } = req.body || {};
-    
-    if (!documentText || documentText.trim() === '') {
-      return res.status(400).json({ error: 'חסר טקסט מסמך או הטקסט ריק' });
+    if (!documentText) {
+      return new Response(JSON.stringify({ error: 'Document text is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    // בדיקת API Key
-    const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
-    console.log('API Key exists:', !!CLAUDE_API_KEY);
-    
-    if (!CLAUDE_API_KEY) {
-      console.log('API Key missing, returning demo report');
-      return res.status(200).json(getDemoReport());
-    }
+    // --- בניית הפרומפט המשודרג ---
+    // הנחיה חשובה ל-AI: בקש ממנו להחזיר את התשובה בפורמט Markdown.
+    // זה יאפשר לנו לעצב אותה יפה בצד הלקוח.
+    const prompt = `
+      אתה EZRA 5.0, מומחה לניהול סיכונים.
+      קיבלת את מסמך התפיסה הבא:
+      <document>
+      ${documentText}
+      </document>
 
-    // קיצור טקסט מחמיר יותר
-    const maxLength = 1200;
-    const truncatedText = documentText.length > maxLength 
-      ? documentText.substring(0, maxLength) + "..."
-      : documentText;
+      וההנחיות הבאות לניתוח:
+      <options>
+      - סוג ניתוח: ${options.analysisType}
+      - התמקדות בסיכונים: ${options.riskFocus}
+      - קהל יעד לדוח: ${options.targetAudience}
+      - הקשר מיוחד: ${options.specificContext || 'אין'}
+      </options>
 
-    console.log('Text length:', truncatedText.length);
+      המשימה שלך היא לייצר דוח ניהול סיכונים מקיף ומפורט.
+      **חובה: פרמט את כל התשובה שלך בפורמט Markdown בלבד.**
+      השתמש בכותרות (#, ##, ###), רשימות (*), הדגשות (**טקסט מודגש**) וטבלאות אם נדרש.
+      התחל ישירות עם כותרת הדוח, לדוגמה: "# 🎯 דוח ניהול סיכונים: [שם הפרויקט]".
+      אל תכלול שום טקסט מקדים כמו "בטח, הנה הדוח המבוקש".
+    `;
 
-    // בניית פרומפט מחמיר יותר
-    const analysisContext = options.analysisType || 'standard';
-    const riskFocus = options.riskFocus || 'balanced';
-    
-    const prompt = `תפקידך: מנתח מסמכי תפיסה ויוצר דוח ניהול סיכונים.
-
-טקסט לניתוח: "${truncatedText}"
-
-הנחיות:
-- התמקד ב${analysisContext === 'educational' ? 'היבטים חינוכיים' : analysisContext === 'technological' ? 'טכנולוגיה' : 'ניתוח כללי'}
-- גישה לסיכונים: ${riskFocus === 'conservative' ? 'שמרנית' : riskFocus === 'optimistic' ? 'אופטימית' : 'מאוזנת'}
-
-צור JSON מדויק עם המבנה הבא (חובה להחזיר JSON תקין בלבד):
-
-{
-  "projectName": "שם הפרויקט מהמסמך",
-  "organization": "הארגון המוזכר",
-  "projectManager": "מנהל הפרויקט או 'לא צוין'",
-  "projectScope": "היקף הפרויקט",
-  "timeline": "לוח זמנים",
-  "projectType": "סוג הפרויקט",
-  "regulatoryPartners": "שותפים רגולטוריים",
-  "goals": [
-    {
-      "id": 1,
-      "title": "מטרה ראשונה",
-      "description": "תיאור המטרה"
-    }
-  ],
-  "deliverables": ["תוצר 1", "תוצר 2"],
-  "risks": [
-    {
-      "id": 1,
-      "title": "שם הסיכון",
-      "linkedGoal": 1,
-      "probability": 7,
-      "impact": 6,
-      "severity": 42,
-      "severityLevel": "בינונית",
-      "description": "תיאור הסיכון",
-      "impacts": ["השלכה 1", "השלכה 2"],
-      "opportunities": ["הזדמנות 1"]
-    }
-  ],
-  "innovationLevel": {
-    "totalScore": 7.5,
-    "pedagogicalImpact": 8,
-    "technologicalComplexity": 7,
-    "organizationalChange": 8,
-    "technologicalRisk": 7
-  },
-  "innovationDescription": "תיאור החדשנות",
-  "innovationDefinition": "הגדרת החדשנות",
-  "committeeRecommendation": "המלצה לוועדה",
-  "executiveSummary": "סיכום מנהלים",
-  "recommendations": [
-    {
-      "id": 1,
-      "title": "המלצה ראשונה",
-      "description": "תיאור ההמלצה",
-      "linkedGoal": 1
-    }
-  ]
-}
-
-חזר רק JSON תקין, ללא טקסט נוסף או הסברים!`;
-
-    console.log('Sending request to Claude...');
-
-    // קריאה ל-Claude
-    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        messages: [{ 
-          role: 'user', 
-          content: prompt 
-        }]
-      })
+    // יצירת ה-Stream מ-Claude
+    const stream = await anthropic.messages.create({
+      model: 'claude-3-opus-20240229', // או כל מודל אחר שאתה משתמש בו
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: prompt }],
+      stream: true,
     });
 
-    console.log('Claude response status:', claudeResponse.status);
+    // יצירת Stream חדש להחזרת התשובה לדפדפן
+    const responseStream = new ReadableStream({
+      async start(controller) {
+        for await (const event of stream) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            const textChunk = event.delta.text;
+            // שלח כל חתיכת טקסט שמגיעה מיד לדפדפן
+            controller.enqueue(new TextEncoder().encode(textChunk));
+          }
+        }
+        // סגור את ה-Stream כשהכל הסתיים
+        controller.close();
+      },
+    });
 
-    if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text();
-      console.error('Claude API error:', errorText);
-      
-      // במקרה של שגיאה, החזר דמו
-      return res.status(200).json(getDemoReport());
-    }
-
-    const data = await claudeResponse.json();
-    console.log('Claude response received');
-
-    let reportData;
-
-    try {
-      // ניקוי תגובת Claude מקוד מרקדאון
-      let responseText = data.content[0].text;
-      responseText = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-      
-      console.log('Parsing Claude response...');
-      reportData = JSON.parse(responseText);
-      
-      // חישוב מונה סיכונים
-      reportData.riskCounts = calculateRiskCounts(reportData.risks || []);
-      
-      console.log('Report generated successfully');
-
-    } catch (parseError) {
-      console.error('JSON Parse error:', parseError);
-      console.log('Raw response:', data.content[0].text);
-      
-      // החזר דמו במקרה של שגיאת פרסור
-      reportData = getDemoReport();
-    }
-
-    return res.status(200).json(reportData);
+    // החזרת ה-Stream לדפדפן כתשובה
+    return new Response(responseStream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-Content-Type-Options': 'nosniff',
+      },
+    });
 
   } catch (error) {
-    console.error('General error:', error);
-    
-    // החזר דמו במקרה של שגיאה כללית
-    return res.status(200).json(getDemoReport());
+    console.error('Error in analyze handler:', error);
+    return new Response(JSON.stringify({ error: 'Failed to process request' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
-}
-
-function calculateRiskCounts(risks) {
-  const counts = { veryHigh: 0, high: 0, medium: 0, low: 0 };
-  
-  risks.forEach(risk => {
-    const severity = risk.severity || (risk.probability * risk.impact);
-    
-    if (severity >= 81) counts.veryHigh++;
-    else if (severity >= 49) counts.high++;
-    else if (severity >= 25) counts.medium++;
-    else counts.low++;
-  });
-  
-  return counts;
-}
-
-function getDemoReport() {
-  return {
-    projectName: "פרויקט חדשנות פדגוגית",
-    organization: "משרד החינוך",
-    projectManager: "ד\"ר מנהל פרויקט",
-    projectScope: "הטמעת מודל חדשני במערכת החינוך",
-    timeline: "3 שנים (2025-2028)",
-    projectType: "פרויקט חדשנות פדגוגית",
-    regulatoryPartners: "אגף מו״פ, ניסויים ויוזמות",
-    goals: [
-      {
-        id: 1,
-        title: "שיפור איכות ההוראה",
-        description: "פיתוח כשירויות מאה ה-21 ושיטות הוראה חדשניות"
-      },
-      {
-        id: 2,
-        title: "חיזוק מעורבות תלמידים",
-        description: "הגברת המעורבות הפעילה בלמידה"
-      },
-      {
-        id: 3,
-        title: "שיפור תמיכה מוסדית",
-        description: "יצירת מערכת תמיכה מקיפה למורים"
-      }
-    ],
-    deliverables: ["מודל פדגוגי", "תוכניות הכשרה", "כלי הערכה", "מדריך יישום"],
-    risks: [
-      {
-        id: 1,
-        title: "התנגדות צוותי הוראה",
-        linkedGoal: 1,
-        linkedGoalTitle: "שיפור הוראה",
-        probability: 8,
-        impact: 7,
-        severity: 56,
-        severityLevel: "גבוהה",
-        description: "קושי בהטמעת שיטות חדשות מצד המורים",
-        impacts: ["יישום שטחי", "תסכול מורים", "פגיעה באיכות"],
-        opportunities: ["צמיחה מקצועית", "קהילות למידה"]
-      },
-      {
-        id: 2,
-        title: "פערים בין בתי ספר",
-        linkedGoal: 2,
-        linkedGoalTitle: "חיזוק מעורבות",
-        probability: 7,
-        impact: 6,
-        severity: 42,
-        severityLevel: "בינונית",
-        description: "הגדלת פערים בין בתי ספר חזקים לחלשים",
-        impacts: ["אי שוויון", "תסכול", "איום של חדשנות"],
-        opportunities: ["תמיכה דיפרנציאלית", "בתי ספר מדגימים"]
-      }
-    ],
-    innovationLevel: {
-      totalScore: 8.0,
-      pedagogicalImpact: 8.5,
-      technologicalComplexity: 7.0,
-      organizationalChange: 8.5,
-      technologicalRisk: 7.5
-    },
-    innovationDescription: "פרויקט חדשנות פדגוגית משמעותי המשנה את דרכי ההוראה והלמידה",
-    innovationDefinition: "חדשנות משבשת הדורשת מרחב רגולטורי מותאם",
-    committeeRecommendation: "מומלץ לאישור עם הכנה מקדימה מקיפה ומעקב צמוד",
-    executiveSummary: "פרויקט אסטרטגי חיוני עם פוטנציאל השפעה גבוה. הסיכונים ניתנים לניהול באמצעות הכנה מתאימה ותמיכה מתמשכת.",
-    recommendations: [
-      {
-        id: 1,
-        title: "פיתוח מקצועי מערכתי",
-        description: "הכשרה מקיפה וליווי אישי למורים",
-        linkedGoal: 1
-      },
-      {
-        id: 2,
-        title: "יישום מדורג",
-        description: "התחלה בפיילוט מוגבל והרחבה הדרגתית",
-        linkedGoal: 2
-      }
-    ],
-    riskCounts: { veryHigh: 0, high: 1, medium: 1, low: 0 }
-  };
 }
