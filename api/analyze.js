@@ -41,7 +41,7 @@ export default async function handler(req, res) {
 
     // --- MODEL UPDATED HERE ---
     const stream = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-3.5-sonnet-20240620',
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
       stream: true,
