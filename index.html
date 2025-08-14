@@ -268,14 +268,58 @@
             `;
             generateBtn.disabled = false;
             showSuccess('קובץ הועלה בהצלחה! לחץ ליצירת הדוח.');
+      async function generateReport() {
+    if (!selectedFile) {
+        showError('אנא בחר קובץ תחילה');
+        return;
+    }
+
+    // מעבר לתצוגת התקדמות (שונה מעט)
+    uploadSection.classList.add('hidden');
+    reportSection.classList.remove('hidden'); // הצג את אזור הדוח מיד
+    const reportContentEl = document.getElementById('reportContent');
+    reportContentEl.innerHTML = '<div class="progress-title">מייצר את הדוח שלך... 🤖</div>'; // הצג הודעת טעינה
+
+    try {
+        const documentText = await extractTextSafely(selectedFile);
+        const advancedSettings = {
+            analysisType: document.getElementById('analysisType').value,
+            riskFocus: document.getElementById('riskFocus').value,
+            targetAudience: document.getElementById('targetAudience').value,
+            specificContext: document.getElementById('specificContext').value
+        };
+
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ documentText: documentText, options: advancedSettings })
+        });
+
+        if (!response.ok) {
+            throw new Error(`שגיאה בשרת: ${response.status} ${response.statusText}`);
         }
 
-        async function generateReport() {
-            if (!selectedFile) {
-                showError('אנא בחר קובץ תחילה');
-                return;
-            }
+        // התחל לקרוא את ה-Stream
+        reportContentEl.innerHTML = ''; // נקה את הודעת הטעינה
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
 
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) {
+                break; // הסטרים הסתיים
+            }
+            // קח את חתיכת הטקסט והוסף אותה ל-div
+            const textChunk = decoder.decode(value);
+            reportContentEl.innerHTML += textChunk;
+        }
+
+    } catch (error) {
+        console.error('שגיאה ביצירת הדוח:', error);
+        reportContentEl.innerHTML = `<div class="error-message">שגיאה ביצירת הדוח: ${error.message}</div>`;
+    }
+}
+            
             // מעבר לתצוגת התקדמות
             uploadSection.classList.add('hidden');
             progressSection.classList.remove('hidden');
