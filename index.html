@@ -1,1978 +1,598 @@
-
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏗️ מחולל דוחות ניהול סיכונים</title>
+    <title>EZRA 5.0 - מחולל דוחות ניהול סיכונים</title>
     <style>
-        /* Reset and Base Styles */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #2c3e50;
             min-height: 100vh;
+            color: #333;
+            direction: rtl;
         }
 
-        /* Platform Styles */
-        .platform-container {
-            max-width: 900px;
-            margin: 20px auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-        }
-
-        .platform-header { text-align: center; margin-bottom: 40px; }
-        .platform-header h1 { font-size: 2.8em; color: #2c3e50; margin-bottom: 10px; }
-        .platform-header .subtitle { font-size: 1.3em; color: #7f8c8d; margin-bottom: 30px; }
-
-        /* Upload Zone */
-        .upload-zone {
-            border: 3px dashed #3498db;
-            border-radius: 20px;
-            padding: 60px 40px;
-            text-align: center;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            margin-bottom: 30px;
-        }
-
-        .upload-zone:hover { 
-            border-color: #2980b9; 
-            background: rgba(52, 152, 219, 0.05); 
-            transform: translateY(-5px); 
-        }
-        
-        .upload-zone.dragover {
-            border-color: #27ae60;
-            background: rgba(39, 174, 96, 0.1);
-            transform: scale(1.02);
-        }
-
-        .upload-icon { font-size: 4em; color: #3498db; margin-bottom: 20px; }
-        .upload-title { font-size: 2em; color: #2c3e50; margin-bottom: 15px; font-weight: bold; }
-        .upload-subtitle { font-size: 1.1em; color: #7f8c8d; margin-bottom: 30px; }
-
-        .upload-button {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            border-radius: 30px;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .upload-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
-        }
-
-        /* Processing Styles */
-        .processing-container { text-align: center; display: none; }
-        .processing-container.active { display: block; }
-        .file-info { 
-            background: #e8f8f5; 
-            padding: 15px; 
-            border-radius: 10px; 
-            border-left: 4px solid #27ae60; 
-            margin-bottom: 30px; 
-            text-align: right;
-        }
-        
-        .progress-bar { 
-            width: 100%; 
-            height: 12px; 
-            background: #ecf0f1; 
-            border-radius: 6px; 
-            overflow: hidden; 
-            margin-bottom: 20px; 
-        }
-        
-        .progress-fill { 
-            height: 100%; 
-            background: linear-gradient(90deg, #3498db, #2980b9); 
-            width: 0%; 
-            transition: width 0.8s ease; 
-        }
-
-        .processing-steps {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-        }
-
-        .step { text-align: center; opacity: 0.5; transition: all 0.3s ease; }
-        .step.active { opacity: 1; }
-        .step.current { opacity: 1; transform: scale(1.05); }
-
-        .step-number {
-            width: 50px; height: 50px; border-radius: 50%; background: #bdc3c7; color: white;
-            display: flex; align-items: center; justify-content: center; margin: 0 auto 15px;
-            font-weight: bold; font-size: 1.2em;
-        }
-
-        .step.active .step-number { background: #3498db; }
-        .step.current .step-number { background: #27ae60; animation: pulse 1.5s infinite; }
-
-        @keyframes pulse { 
-            0% { transform: scale(1); } 
-            50% { transform: scale(1.1); } 
-            100% { transform: scale(1); } 
-        }
-
-        /* Control Buttons */
-        .control-buttons { 
-            position: fixed; 
-            top: 20px; 
-            left: 20px; 
-            z-index: 1000; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px; 
-        }
-        
-        .control-btn { 
-            padding: 15px 25px; 
-            border: none; 
-            border-radius: 25px; 
-            cursor: pointer; 
-            font-size: 1em; 
-            font-weight: bold; 
-            transition: all 0.3s ease; 
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-        
-        .new-report-btn { background: #95a5a6; color: white; }
-        .edit-toggle { background: #3498db; color: white; }
-        .edit-toggle.active { background: #27ae60; }
-        .pdf-export { background: #e74c3c; color: white; }
-        .pdf-export.exporting { background: #f39c12; cursor: not-allowed; }
-        .control-btn:hover { transform: translateY(-2px); }
-
-        /* Success Message */
-        .success-message {
-            position: fixed; 
-            top: 100px; 
-            right: 20px; 
-            background: #27ae60; 
-            color: white;
-            padding: 15px 25px; 
-            border-radius: 10px; 
-            font-weight: bold; 
-            opacity: 0;
-            transform: translateX(400px); 
-            transition: all 0.3s ease; 
-            z-index: 1001;
-            max-width: 350px; 
-            white-space: pre-line;
-        }
-        .success-message.show { opacity: 1; transform: translateX(0); }
-
-        /* Report Container - EXACTLY MATCHING ORIGINAL */
-        .report-container { 
-            display: none; 
-            max-width: 1200px; 
-            margin: 0 auto; 
-            background: rgba(255, 255, 255, 0.98); 
-            border-radius: 20px; 
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15); 
-            overflow: hidden; 
-        }
-        .report-container.active { display: block; }
-
-        /* === EXACT COPY OF ORIGINAL REPORT STYLES === */
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.98);
-            border-radius: 20px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-            overflow: hidden;
+            padding: 20px;
         }
 
         .header {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            color: white;
-            padding: 50px 40px;
             text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-            opacity: 0.3;
+            color: white;
+            margin-bottom: 40px;
         }
 
         .header h1 {
             font-size: 3em;
-            margin-bottom: 15px;
-            position: relative;
-            z-index: 1;
+            margin-bottom: 10px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
         .header .subtitle {
-            font-size: 1.4em;
+            font-size: 1.2em;
             opacity: 0.9;
-            position: relative;
-            z-index: 1;
-            margin-bottom: 10px;
         }
 
-        .date-badge {
-            display: inline-block;
-            background: rgba(255,255,255,0.2);
-            padding: 8px 16px;
+        .upload-section {
+            background: white;
             border-radius: 20px;
-            font-size: 0.9em;
-            margin-top: 15px;
-            backdrop-filter: blur(10px);
-            position: relative;
-            z-index: 1;
-        }
-
-        /* Navigation Menu */
-        .nav-menu {
-            position: sticky;
-            top: 0;
-            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
-            z-index: 1000;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-
-        .nav-links {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 0;
-            list-style: none;
-            margin: 0;
-        }
-
-        .nav-links li {
-            flex: 1;
-        }
-
-        .nav-links a {
-            display: block;
-            padding: 18px 20px;
-            color: #bdc3c7;
-            text-decoration: none;
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.95em;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
             transition: all 0.3s ease;
-            border-left: 1px solid #2c3e50;
-            position: relative;
         }
 
-        .nav-links li:first-child a {
-            border-left: none;
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
         }
 
-        .nav-links a:hover,
-        .nav-links a.active {
-            background: #2c3e50;
-            color: white;
+        .upload-zone:hover {
+            border-color: #5a6fd8;
+            background: #e3f2fd;
             transform: translateY(-2px);
         }
 
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            width: 0;
-            height: 3px;
-            background: #3498db;
-            transition: all 0.3s ease;
-            transform: translateX(-50%);
+        .upload-zone.dragover {
+            border-color: #4caf50;
+            background: #e8f5e8;
         }
 
-        .nav-links a:hover::after,
-        .nav-links a.active::after {
-            width: 80%;
-        }
-
-        /* Sections */
-        .section {
-            scroll-margin-top: 80px;
-        }
-
-        .section-header {
-            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-            color: white;
-            padding: 25px 40px;
-            font-size: 2.2em;
-            font-weight: bold;
-            text-align: center;
-            margin: 0;
-            position: relative;
-        }
-
-        .section-header::after {
-            content: '';
-            position: absolute;
-            bottom: -15px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 80px;
-            height: 5px;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 3px;
-        }
-
-        .project-overview {
-            padding: 40px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        }
-
-        .overview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 25px;
-            margin-top: 30px;
-        }
-
-        .overview-card {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-            border-top: 4px solid #3498db;
-            transition: all 0.3s ease;
-        }
-
-        .overview-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
-        }
-
-        .overview-card h4 {
-            color: #2c3e50;
-            margin-bottom: 12px;
-            font-size: 1.2em;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .overview-card .icon {
-            font-size: 1.5em;
-        }
-
-        .goals-section {
-            background: white;
-            margin: 30px 40px;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-        }
-
-        .goals-section h3 {
-            color: #2c3e50;
+        .upload-icon {
+            font-size: 4em;
+            color: #667eea;
             margin-bottom: 20px;
-            font-size: 1.5em;
-            text-align: center;
         }
 
-        .goal-item, .deliverable-item {
-            background: #f8f9fa;
-            margin: 15px 0;
-            padding: 20px;
-            border-radius: 10px;
-            border-right: 4px solid #27ae60;
-            transition: all 0.3s ease;
-        }
-
-        .goal-item:hover, .deliverable-item:hover {
-            background: #e9ecef;
-            transform: translateX(-5px);
-        }
-
-        .risks-container {
-            padding: 40px;
-            background: white;
-        }
-
-        .risk-summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }
-
-        .summary-card {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 25px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .summary-card:hover {
-            transform: translateY(-3px);
-        }
-
-        .summary-number {
-            font-size: 3em;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .very-high { color: #e74c3c; }
-        .high { color: #f39c12; }
-        .medium { color: #f1c40f; }
-        .low { color: #27ae60; }
-
-        .risks-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 25px;
-            margin-top: 30px;
-        }
-
-        .risk-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            transition: all 0.3s ease;
-            border-top: 6px solid;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .risk-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 6px;
-            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
-            animation: shimmer 2s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-        }
-
-        .risk-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .risk-very-high { border-top-color: #e74c3c; }
-        .risk-high { border-top-color: #f39c12; }
-        .risk-medium { border-top-color: #f1c40f; }
-        .risk-low { border-top-color: #27ae60; }
-
-        .risk-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 20px;
-            gap: 15px;
-        }
-
-        .risk-title {
+        .upload-text {
             font-size: 1.3em;
-            font-weight: bold;
-            color: #2c3e50;
-            flex: 1;
-        }
-
-        .risk-severity {
-            padding: 8px 15px;
-            border-radius: 25px;
-            font-size: 0.8em;
-            font-weight: bold;
-            color: white;
-            white-space: nowrap;
-        }
-
-        .severity-very-high { background: #e74c3c; }
-        .severity-high { background: #f39c12; }
-        .severity-medium { background: #f1c40f; color: #2c3e50; }
-        .severity-low { background: #27ae60; }
-
-        .risk-metrics {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 15px;
-            margin: 20px 0;
-            text-align: center;
-        }
-
-        .metric {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-        }
-
-        .metric-value {
-            font-size: 1.8em;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        .metric-label {
-            font-size: 0.9em;
-            color: #7f8c8d;
-            margin-top: 5px;
-        }
-
-        .risk-description, .risk-opportunity {
-            color: #34495e;
-            line-height: 1.7;
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 15px;
-            border-right: 4px solid #bdc3c7;
-        }
-
-        .risk-opportunity {
-            border-right-color: #27ae60;
-            margin-top: 10px;
-        }
-        
-        .risk-impact {
-            margin-top: 20px;
-        }
-
-        .impact-title {
-            font-weight: bold;
-            color: #e74c3c;
-            margin-bottom: 10px;
-        }
-
-        .impact-list {
-            list-style: none;
-            padding-right: 15px;
-        }
-
-        .impact-list li {
-            padding: 8px 0;
-            border-bottom: 1px solid #ecf0f1;
-            position: relative;
-        }
-
-        .impact-list li::before {
-            content: '⚠️';
-            margin-left: 10px;
-        }
-
-        .opportunity-title {
-            font-weight: bold;
-            color: #27ae60;
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
-
-        .opportunity-list {
-            list-style: none;
-            padding-right: 15px;
-        }
-
-        .opportunity-list li {
-            padding: 8px 0;
-            border-bottom: 1px solid #ecf0f1;
-            position: relative;
-        }
-
-        .opportunity-list li::before {
-            content: '✅';
-            margin-left: 10px;
-        }
-
-        .strategies-section {
-            padding: 50px 40px;
-            background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
-        }
-
-        .strategy-card {
-            background: white;
-            margin: 30px 0;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .strategy-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-        }
-
-        .strategy-header {
-            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-            color: white;
-            padding: 25px 30px;
-            font-weight: bold;
-            font-size: 1.3em;
-            position: relative;
-        }
-
-        .strategy-header::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 30px;
-            width: 40px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 2px;
-        }
-
-        .strategy-content {
-            padding: 30px;
-        }
-
-        .strategy-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .strategy-detail {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .strategy-item, .detail-item {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 12px;
-            border-right: 4px solid #27ae60;
-            transition: all 0.3s ease;
-        }
-
-        .strategy-item:hover, .detail-item:hover {
-            background: #e9ecef;
-            transform: translateX(-3px);
-        }
-
-        .strategy-item h5, .detail-item h5 {
-            color: #27ae60;
-            margin-bottom: 8px;
-            font-size: 1.1em;
-        }
-
-        .timeline-badge {
-            display: inline-block;
-            background: #3498db;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 15px;
-            font-size: 0.8em;
-            margin-top: 10px;
-        }
-
-        .summary-box {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            margin: 30px 0;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.08);
-        }
-
-        .committee-recommendations {
-            background: #f0f8ff;
-            padding: 25px;
-            border-radius: 15px;
-            margin-top: 30px;
-            border-left: 6px solid #3498db;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-        }
-
-        .committee-recommendations h4 {
-            color: #34495e;
-            font-size: 1.4em;
+            color: #555;
             margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
 
-        .committee-recommendations .editable {
-            font-size: 1.1em;
-            line-height: 1.8;
+        .file-types {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .project-details {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .input-group input,
+        .input-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group input:focus,
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .generate-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-section {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: none;
+        }
+
+        .progress-title {
+            text-align: center;
+            font-size: 1.5em;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-weight: bold;
             color: #555;
         }
 
-        .innovation-section {
-            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
-            color: white;
-            padding: 50px 40px;
-            text-align: center;
-            position: relative;
-        }
-
-        .innovation-score {
-            font-size: 5em;
-            font-weight: bold;
-            margin: 30px 0;
-            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
-            position: relative;
-        }
-
-        .innovation-components {
+        .progress-steps {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin-top: 40px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 30px;
         }
 
-        .component-card {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 25px;
-            border-radius: 15px;
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .component-card:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-3px);
-        }
-
-        .component-score {
-            font-size: 2.5em;
-            font-weight: bold;
-            color: #f39c12;
-            margin-bottom: 10px;
-        }
-
-        .component-title {
-            font-size: 1.1em;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .regulation-section {
-            padding: 40px;
-            background: #ecf0f1;
-        }
-
-        .regulation-table {
-            width: 100%;
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-            margin: 20px 0;
-        }
-
-        .regulation-table th,
-        .regulation-table td {
-            padding: 20px;
-            text-align: right;
-            border-bottom: 1px solid #ecf0f1;
-            vertical-align: top;
-        }
-
-        .regulation-table th {
-            background: #34495e;
-            color: white;
-            font-weight: bold;
-        }
-
-        .regulation-table tr:hover {
-            background: #f8f9fa;
-        }
-
-        .footer {
-            background: #2c3e50;
-            color: white;
+        .progress-step {
             text-align: center;
-            padding: 30px;
-            font-size: 0.9em;
-        }
-
-        /* Editable Styles */
-        .editable {
-            padding: 3px;
-            border-radius: 3px;
+            padding: 20px;
+            border-radius: 15px;
+            background: #f8f9fa;
             transition: all 0.3s ease;
         }
 
-        .editable[contenteditable="true"] {
-            background: rgba(52, 152, 219, 0.1);
-            border: 2px dashed #3498db;
-            outline: none;
-            cursor: text;
-            padding: 5px;
+        .progress-step.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.05);
         }
 
-        .editable[contenteditable="true"]:hover {
-            background: rgba(52, 152, 219, 0.2);
+        .progress-step.completed {
+            background: #4caf50;
+            color: white;
         }
 
-        .editable[contenteditable="true"]:focus {
-            background: rgba(52, 152, 219, 0.15);
-            box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+        .step-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
         }
 
-        /* Mobile Responsive */
+        .report-section {
+            display: none;
+        }
+
+        .show {
+            display: block !important;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-right: 4px solid #f44336;
+        }
+
+        .success-message {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-right: 4px solid #4caf50;
+        }
+
         @media (max-width: 768px) {
-            .platform-container { margin: 10px; padding: 20px; }
-            .upload-zone { padding: 40px 20px; }
-            .processing-steps { grid-template-columns: 1fr; }
-            
-            .control-buttons { 
-                position: relative; 
-                top: auto; 
-                left: auto; 
-                flex-direction: row; 
-                justify-content: center; 
-                margin-bottom: 20px; 
-                flex-wrap: wrap;
+            .project-details {
+                grid-template-columns: 1fr;
             }
             
-            .header h1 { font-size: 2.2em; }
-            .nav-links { flex-direction: column; }
-            .nav-links a { border-left: none; border-bottom: 1px solid #2c3e50; }
-            .nav-links li:last-child a { border-bottom: none; }
-            .risks-grid, .overview-grid, .innovation-components { grid-template-columns: 1fr; }
-            .innovation-score { font-size: 3.5em; }
-            .risk-header { flex-direction: column; align-items: flex-start; }
-            .risk-metrics { grid-template-columns: 1fr; }
-        }
-
-        /* Enhanced Print Styles for Perfect PDF Export */
-        @media print {
-            /* Hide UI elements */
-            .control-buttons, .success-message, .platform-container { 
-                display: none !important; 
-            }
-            
-            /* Optimize for A4 page */
-            @page {
-                size: A4;
-                margin: 15mm 10mm;
-            }
-            
-            /* Base layout fixes */
-            body { 
-                -webkit-print-color-adjust: exact !important;
-                color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                font-size: 12pt !important;
-                line-height: 1.4 !important;
-                background: white !important;
-            }
-            
-            .report-container { 
-                max-width: none !important; 
-                box-shadow: none !important; 
-                border-radius: 0 !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            
-            .container {
-                max-width: none !important;
-                margin: 0 !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-            }
-            
-            /* Header adjustments */
-            .header {
-                padding: 30px 20px !important;
-                margin-bottom: 20px !important;
-                page-break-after: avoid !important;
+            .progress-steps {
+                grid-template-columns: repeat(2, 1fr);
             }
             
             .header h1 {
-                font-size: 24pt !important;
-                margin-bottom: 10px !important;
-            }
-            
-            .header .subtitle {
-                font-size: 14pt !important;
-                margin-bottom: 8px !important;
-            }
-            
-            .date-badge {
-                font-size: 10pt !important;
-                padding: 5px 12px !important;
-            }
-            
-            /* Navigation - compact for print */
-            .nav-menu { 
-                position: static !important;
-                page-break-after: avoid !important;
-            }
-            
-            .nav-links {
-                flex-wrap: wrap !important;
-                font-size: 9pt !important;
-            }
-            
-            .nav-links a {
-                padding: 8px 10px !important;
-                font-size: 9pt !important;
-            }
-            
-            /* Section headers */
-            .section-header {
-                font-size: 18pt !important;
-                padding: 15px 20px !important;
-                margin: 15px 0 !important;
-                page-break-after: avoid !important;
-            }
-            
-            /* Project overview grid */
-            .project-overview {
-                padding: 20px !important;
-                page-break-inside: avoid !important;
-            }
-            
-            .overview-grid {
-                grid-template-columns: repeat(2, 1fr) !important;
-                gap: 15px !important;
-                margin-top: 15px !important;
-            }
-            
-            .overview-card {
-                padding: 15px !important;
-                margin-bottom: 10px !important;
-                page-break-inside: avoid !important;
-                font-size: 11pt !important;
-            }
-            
-            .overview-card h4 {
-                font-size: 12pt !important;
-                margin-bottom: 8px !important;
-            }
-            
-            /* Goals and deliverables */
-            .goals-section {
-                margin: 15px 20px !important;
-                padding: 15px !important;
-                page-break-inside: avoid !important;
-            }
-            
-            .goals-section h3 {
-                font-size: 14pt !important;
-                margin-bottom: 12px !important;
-            }
-            
-            .goal-item, .deliverable-item {
-                padding: 12px !important;
-                margin: 8px 0 !important;
-                font-size: 11pt !important;
-                page-break-inside: avoid !important;
-            }
-            
-            /* Risk management section */
-            .risks-container {
-                padding: 20px !important;
-            }
-            
-            .risk-summary {
-                grid-template-columns: repeat(4, 1fr) !important;
-                gap: 10px !important;
-                margin-bottom: 20px !important;
-                page-break-inside: avoid !important;
-            }
-            
-            .summary-card {
-                padding: 15px !important;
-                font-size: 10pt !important;
-            }
-            
-            .summary-number {
-                font-size: 24pt !important;
-                margin-bottom: 5px !important;
-            }
-            
-            /* Risk cards - ensure they don't break across pages */
-            .risks-grid {
-                grid-template-columns: 1fr !important;
-                gap: 15px !important;
-            }
-            
-            .risk-card {
-                padding: 15px !important;
-                margin-bottom: 15px !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                font-size: 11pt !important;
-            }
-            
-            .risk-title {
-                font-size: 14pt !important;
-                margin-bottom: 10px !important;
-            }
-            
-            .risk-severity {
-                font-size: 9pt !important;
-                padding: 4px 8px !important;
-            }
-            
-            .risk-metrics {
-                grid-template-columns: repeat(3, 1fr) !important;
-                gap: 8px !important;
-                margin: 10px 0 !important;
-            }
-            
-            .metric {
-                padding: 8px !important;
-            }
-            
-            .metric-value {
-                font-size: 16pt !important;
-            }
-            
-            .metric-label {
-                font-size: 9pt !important;
-            }
-            
-            .risk-description {
-                padding: 12px !important;
-                margin-top: 10px !important;
-                font-size: 10pt !important;
-                line-height: 1.3 !important;
-            }
-            
-            .impact-list, .opportunity-list {
-                margin: 8px 0 !important;
-            }
-            
-            .impact-list li, .opportunity-list li {
-                padding: 4px 0 !important;
-                font-size: 10pt !important;
-            }
-            
-            /* Strategies section */
-            .strategies-section {
-                padding: 20px !important;
-            }
-            
-            .strategy-card {
-                margin: 15px 0 !important;
-                page-break-inside: avoid !important;
-            }
-            
-            .strategy-header {
-                padding: 15px 20px !important;
-                font-size: 14pt !important;
-            }
-            
-            .strategy-content {
-                padding: 15px !important;
-                font-size: 11pt !important;
-            }
-            
-            .detail-item {
-                padding: 10px !important;
-                margin: 8px 0 !important;
-                font-size: 10pt !important;
-            }
-            
-            .timeline-badge {
-                font-size: 8pt !important;
-                padding: 3px 8px !important;
-            }
-            
-            /* Innovation section */
-            .innovation-section {
-                padding: 20px !important;
-                page-break-inside: avoid !important;
-            }
-            
-            .innovation-score {
-                font-size: 36pt !important;
-                margin: 15px 0 !important;
-            }
-            
-            .innovation-components {
-                grid-template-columns: repeat(2, 1fr) !important;
-                gap: 15px !important;
-            }
-            
-            .component-card {
-                padding: 15px !important;
-                font-size: 11pt !important;
-            }
-            
-            .component-score {
-                font-size: 20pt !important;
-                margin-bottom: 8px !important;
-            }
-            
-            /* Regulation table */
-            .regulation-section {
-                padding: 20px !important;
-            }
-            
-            .regulation-table {
-                font-size: 10pt !important;
-            }
-            
-            .regulation-table th,
-            .regulation-table td {
-                padding: 8px !important;
-                font-size: 10pt !important;
-            }
-            
-            /* Executive summary */
-            .summary-box {
-                padding: 15px !important;
-                margin: 15px 0 !important;
-                page-break-inside: avoid !important;
-                font-size: 11pt !important;
-            }
-            
-            .summary-box h3 {
-                font-size: 16pt !important;
-                margin-bottom: 12px !important;
-            }
-            
-            .summary-box p {
-                line-height: 1.4 !important;
-                margin-bottom: 10px !important;
-            }
-            
-            /* Recommendations */
-            #recommendations ul li {
-                font-size: 11pt !important;
-                padding: 10px !important;
-                margin-bottom: 8px !important;
-                page-break-inside: avoid !important;
-            }
-            
-            /* Footer */
-            .footer {
-                padding: 15px !important;
-                font-size: 10pt !important;
-                page-break-inside: avoid !important;
-            }
-            
-            /* General page break rules */
-            .section { 
-                page-break-inside: avoid;
-                break-inside: avoid;
-            }
-            
-            h1, h2, h3, h4, h5 {
-                page-break-after: avoid !important;
-            }
-            
-            /* Force page breaks before major sections */
-            #risks, #strategies, #innovation, #regulation-compliance, #executive-summary-section {
-                page-break-before: auto !important;
-            }
-            
-            /* Ensure colors print correctly */
-            * {
-                -webkit-print-color-adjust: exact !important;
-                color-adjust: exact !important;
-                print-color-adjust: exact !important;
+                font-size: 2em;
             }
         }
-
-        html { scroll-behavior: smooth; }
     </style>
 </head>
 <body>
-    <div class="success-message" id="successMessage"></div>
-
-    <div class="control-buttons" id="controlButtons" style="display: none;">
-        <button class="control-btn new-report-btn" onclick="showUploadStep()">📄 דוח חדש</button>
-        <button class="control-btn edit-toggle" onclick="toggleEdit()">🎨 התחל עריכה</button>
-        <button class="control-btn pdf-export" onclick="exportToPDF()">📄 ייצוא ל-PDF</button>
-    </div>
-
-    <!-- Step 1: Upload -->
-    <div class="platform-container" id="uploadStep">
-        <div class="platform-header">
-            <h1>🏗️ מחולל דוחות ניהול סיכונים</h1>
-            <div class="subtitle">העלה מסמך תפיסה וקבל דוח מקצועי תוך דקות</div>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎯 EZRA 5.0</h1>
+            <div class="subtitle">מחולל דוחות ניהול סיכונים חכם עם AI</div>
         </div>
 
-        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-            <div class="upload-icon">📄</div>
-            <h2 class="upload-title">העלה מסמך</h2>
-            <p class="upload-subtitle">גרור קובץ לכאן או לחץ לבחירה</p>
-            <input type="file" id="fileInput" accept=".docx,.pdf,.txt" style="display: none;" onchange="handleFileUpload(event)">
-            <button class="upload-button">בחר קובץ</button>
-            <div style="margin-top: 20px; color: #7f8c8d; font-size: 0.9em;">
-                <small>תומך ב: Word (.docx), PDF, טקסט (.txt) - עד 16MB</small>
+        <!-- Upload Section -->
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">גרור ושחרר קובץ או לחץ לבחירה</div>
+                <div class="file-types">תומך ב: PDF, Word (.docx), טקסט (.txt)</div>
+                <input type="file" id="fileInput" class="file-input" accept=".pdf,.docx,.doc,.txt">
             </div>
+
+            <div class="project-details">
+                <div class="input-group">
+                    <label for="projectName">שם הפרויקט</label>
+                    <input type="text" id="projectName" placeholder="הכנס שם פרויקט...">
+                </div>
+                <div class="input-group">
+                    <label for="organization">ארגון</label>
+                    <input type="text" id="organization" placeholder="שם הארגון...">
+                </div>
+                <div class="input-group" style="grid-column: 1 / -1;">
+                    <label for="customInstructions">הוראות מיוחדות (אופציונלי)</label>
+                    <textarea id="customInstructions" placeholder="הוראות מיוחדות לניתוח..." rows="3"></textarea>
+                </div>
+            </div>
+
+            <button class="generate-btn" id="generateBtn" disabled>
+                📊 צור דוח ניהול סיכונים
+            </button>
         </div>
 
-        <div style="background: #f8f9fa; padding: 25px; border-radius: 15px; border-left: 4px solid #3498db; margin-top: 30px; text-align: right;">
-            <h3>🤖 איך זה עובד?</h3>
-            <ul style="list-style: none; padding: 0;">
-                <li style="padding: 5px 0;">✅ AI מנתח את התוכן של המסמך שלך</li>
-                <li style="padding: 5px 0;">✅ מזהה סיכונים, אתגרים והזדמנויות</li>
-                <li style="padding: 5px 0;">✅ מפה את המידע לתבנית דוח מקצועית</li>
-                <li style="padding: 5px 0;">✅ יוצר דוח מעוצב עם אפשרות עריכה והורדה</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- Step 2: Processing -->
-    <div class="platform-container processing-container" id="processingStep">
-        <div style="text-align: center;">
-            <h2>מעבד את המסמך שלך...</h2>
-            <div class="file-info" id="fileInfo"></div>
-        </div>
-
-        <div style="margin: 30px 0;">
+        <!-- Progress Section -->
+        <div class="progress-section" id="progressSection">
+            <div class="progress-title">מייצר דוח ניהול סיכונים...</div>
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill"></div>
             </div>
-
-            <div class="processing-steps">
-                <div class="step" id="step1">
-                    <div class="step-number">1</div>
-                    <div>קורא קובץ...</div>
+            <div class="progress-text" id="progressText">0%</div>
+            
+            <div class="progress-steps">
+                <div class="progress-step" id="step1">
+                    <div class="step-icon">📤</div>
+                    <div>העלאת קובץ</div>
                 </div>
-                <div class="step" id="step2">
-                    <div class="step-number">2</div>
-                    <div>מנתח סיכונים...</div>
+                <div class="progress-step" id="step2">
+                    <div class="step-icon">🔍</div>
+                    <div>ניתוח מסמך</div>
                 </div>
-                <div class="step" id="step3">
-                    <div class="step-number">3</div>
-                    <div>יוצר דוח...</div>
+                <div class="progress-step" id="step3">
+                    <div class="step-icon">🤖</div>
+                    <div>עיבוד AI</div>
                 </div>
-                <div class="step" id="step4">
-                    <div class="step-number">4</div>
-                    <div>הדוח מוכן!</div>
+                <div class="progress-step" id="step4">
+                    <div class="step-icon">📊</div>
+                    <div>יצירת דוח</div>
                 </div>
             </div>
         </div>
 
-        <div style="background: #f8f9fa; padding: 25px; border-radius: 15px; border-left: 4px solid #3498db; margin-top: 30px; text-align: right;">
-            <h3>🔍 מה קורה מאחורי הקלעים?</h3>
-            <ul style="list-style: none; padding: 0;">
-                <li style="padding: 5px 0;">🤖 בינה מלאכותית מתקדמת מנתחת את המסמך</li>
-                <li style="padding: 5px 0;">📊 זיהוי אוטומטי של סיכונים ודירוגם</li>
-                <li style="padding: 5px 0;">📋 מיפוי המידע לתבנית דוח מקצועית</li>
-                <li style="padding: 5px 0;">🎨 יצירת דוח מעוצב עם כל הפרטים</li>
-            </ul>
-        </div>
-    </div>
-
-    <!-- Step 3: Report - EXACTLY MATCHING ORIGINAL -->
-    <div class="report-container" id="reportStep">
-        <div class="container">
-            <header class="header">
-                <h1 class="editable" id="reportTitle">דוח ניהול סיכונים מקיף</h1>
-                <div class="subtitle editable" id="reportSubtitle">פרויקט 720 - טרנספורמציה דיגיטלית ללמידה מותאמת אישית</div>
-                <div class="date-badge editable" id="reportBadge">משרד החינוך • מינהל חדשנות וטכנולוגיה • 2025</div>
-            </header>
-
-            <nav class="nav-menu">
-                <ul class="nav-links">
-                    <li><a href="#project" class="nav-link">📋 הגדרת הפרויקט</a></li>
-                    <li><a href="#risks" class="nav-link">⚠️ ניהול סיכונים</a></li>
-                    <li><a href="#strategies" class="nav-link">📈 תוכנית התמודדות</a></li>
-                    <li><a href="#innovation" class="nav-link">🚀 אסדרת חדשנות</a></li>
-                    <li><a href="#innovation-level" class="nav-link">📊 רמת החדשנות</a></li>
-                    <li><a href="#regulation-compliance" class="nav-link">✅ התאמה לדרישות אסדרה</a></li>
-                    <li><a href="#executive-summary-section" class="nav-link">📝 סיכום מנהלים והמלצות</a></li>
-                </ul>
-            </nav>
-
-            <section id="project" class="section">
-                <div class="section-header editable">📋 הגדרת הפרויקט</div>
-                
-                <div class="project-overview">
-                    <h2 style="text-align: center; color: #2c3e50; font-size: 2.2em; margin-bottom: 30px;" class="editable">פרטי הפרויקט</h2>
-                    <div class="overview-grid" id="projectOverview">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                </div>
-
-                <div class="goals-section">
-                    <h3 class="editable">🎯 מטרות הפרויקט</h3>
-                    <div id="projectGoals">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                </div>
-
-                <div class="goals-section">
-                    <h3 class="editable">📋 תוצרים מצופים</h3>
-                    <div id="projectDeliverables">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                </div>
-            </section>
-
-            <section id="risks" class="section">
-                <div class="section-header editable">⚠️ ניהול סיכונים</div>
-                
-                <div class="risks-container">
-                    <div class="risk-summary" id="riskSummary">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                    <div class="risks-grid" id="risksGrid">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                </div>
-            </section>
-
-            <section id="strategies" class="section">
-                <div class="section-header editable">📈 תוכנית התמודדות עם סיכונים</div>
-                <div class="strategies-section" id="strategiesSection">
-                    <!-- Will be populated by JavaScript -->
-                </div>
-            </section>
-
-            <section id="innovation" class="section">
-                <div class="section-header editable">🚀 אסדרת חדשנות</div>
-                <div class="risks-container">
-                    <p class="editable" style="text-align: center; font-size: 1.1em; margin-bottom: 25px;">
-                        הפרויקט נתפס כפרויקט חדשני בקנה מידה לאומי, המחייב בחינה מעמיקה של היבטים רגולטוריים ואסדרתיים כדי להבטיח את יישומו החלק והבטוח.
-                    </p>
-                    <div class="summary-box">
-                        <h3 style="text-align: center; color: #2c3e50; font-size: 1.8em; margin-bottom: 20px;" class="editable">הגדרת רמת החדשנות</h3>
-                        <p class="editable">
-                            הפרויקט כולל אלמנטים של ביג דאטה, למידת מכונה (AI) והתאמה אישית בקנה מידה רחב, המחייבים בחינה מעמיקה של היבטים רגולטוריים ואסדרתיים.
-                        </p>
-                        <div class="committee-recommendations">
-                            <h4><span class="icon">👥</span><span class="editable">המלצת ועדת המשנה לאסדרת חדשנות:</span></h4>
-                            <p class="editable">
-                                ועדת המשנה ממליצה לסווג את הפרויקט כ"<strong>חדשנות מהותית ורחבת היקף (Tier 1)</strong>". סיווג זה נובע מהפוטנציאל לשיבוש משמעותי במערכות הקיימות, היקף ההטמעה הארצי המתוכנן, והשימוש בטכנולוגיות מתקדמות בעלות השלכות רוחביות.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="innovation-level" class="section innovation-section">
-                <div class="section-header editable">📊 רמת החדשנות בפרויקט</div>
-                <p class="editable" style="font-size: 1.2em; max-width: 800px; margin: 20px auto 40px; color: rgba(255,255,255,0.9);">
-                    רמת החדשנות של הפרויקט נמדדה על פי מספר קריטריונים, המשקפים את מידת ההשפעה, המורכבות הטכנולוגית והשינוי שהפרויקט מביא למערכת.
-                </p>
-                <div class="innovation-score editable">8.5 / 10</div>
-                <div class="innovation-components">
-                    <div class="component-card">
-                        <div class="component-score editable">9.0</div>
-                        <div class="component-title editable">השפעה פדגוגית</div>
-                        <p class="editable">שינוי עמוק בתהליכי הוראה-למידה והתאמה אישית.</p>
-                    </div>
-                    <div class="component-card">
-                        <div class="component-score editable">8.8</div>
-                        <div class="component-title editable">מורכבות טכנולוגית</div>
-                        <p class="editable">שילוב AI, למידת מכונה, ביג דאטה ואוטומציה.</p>
-                    </div>
-                    <div class="component-card">
-                        <div class="component-score editable">8.2</div>
-                        <div class="component-title editable">שינוי ארגוני</div>
-                        <p class="editable">הטמעה רוחבית המשפיעה על כל רבדי המערכת.</p>
-                    </div>
-                    <div class="component-card">
-                        <div class="component-score editable">8.0</div>
-                        <div class="component-title editable">סיכון טכנולוגי</div>
-                        <p class="editable">פיתוח ואינטגרציה של פתרונות חדשים.</p>
-                    </div>
-                </div>
-            </section>
-
-            <section id="regulation-compliance" class="section">
-                <div class="section-header editable">✅ התאמה לדרישות אסדרה</div>
-                <div class="regulation-section">
-                    <p class="editable" style="font-size: 1.1em; text-align: center; margin-bottom: 30px;">
-                        להלן פירוט ההתאמה של הפרויקט לדרישות האסדרה הרלוונטיות, וכן הפעולות הנדרשות להשלמת ההתאמה.
-                    </p>
-                    <div class="regulation-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th class="editable">דרישת אסדרה</th>
-                                    <th class="editable">תיאור</th>
-                                    <th class="editable">סטטוס התאמה</th>
-                                    <th class="editable">פעולות נדרשות</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td class="editable">אבטחת מידע וסייבר</td>
-                                    <td class="editable">הגנה על נתוני תלמידים ומורים מפני גישה בלתי מורשית.</td>
-                                    <td class="editable" style="color: #f39c12; font-weight: bold;">בבדיקה מתקדמת</td>
-                                    <td class="editable">אישור סופי של ארכיטקטורת אבטחה.</td>
-                                </tr>
-                                <tr>
-                                    <td class="editable">פרטיות מידע (GDPR)</td>
-                                    <td class="editable">איסוף, אחסון ועיבוד נתונים בהתאם לרגולציה.</td>
-                                    <td class="editable" style="color: #e74c3c; font-weight: bold;">דורש התייחסות</td>
-                                    <td class="editable">השלמת מסמך הערכת השפעה על פרטיות (PIA).</td>
-                                </tr>
-                                <tr>
-                                    <td class="editable">הנגשה לבעלי מוגבלויות</td>
-                                    <td class="editable">עמידה בתקני נגישות לווב (WCAG 2.1 AA).</td>
-                                    <td class="editable" style="color: #27ae60; font-weight: bold;">בתהליך אישור</td>
-                                    <td class="editable">ביצוע סבב בדיקות נגישות אחרון.</td>
-                                </tr>
-                                <tr>
-                                    <td class="editable">הטיית אלגוריתמים (AI Ethics)</td>
-                                    <td class="editable">בחינה וצמצום הטיות אפשריות באלגוריתמי הלמידה.</td>
-                                    <td class="editable" style="color: #e74c3c; font-weight: bold;">דורש התייחסות</td>
-                                    <td class="editable">הקמת ועדת אתיקה פנימית לבחינת האלגוריתמים.</td>
-                                </tr>
-                                <tr>
-                                    <td class="editable">הכשרת עובדי הוראה</td>
-                                    <td class="editable">עמידה בדרישות ההכשרה הפדגוגית והדיגיטלית.</td>
-                                    <td class="editable" style="color: #27ae60; font-weight: bold;">הושלם</td>
-                                    <td class="editable">המשך ליווי ותמיכה פדגוגית שוטפת.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-            
-            <section id="executive-summary-section" class="section">
-                <div class="section-header editable">📝 סיכום מנהלים והמלצות</div>
-                <div class="risks-container">
-                    <div class="summary-box" style="margin-bottom: 40px;">
-                        <h3 style="text-align: center; color: #2c3e50; font-size: 1.8em; margin-bottom: 20px;" class="editable">סיכום מנהלים: הפרויקט במבט על</h3>
-                        <div id="executiveSummary" class="editable">
-                            <!-- Will be populated by JavaScript -->
-                        </div>
-                    </div>
-
-                    <div class="summary-box">
-                        <h3 style="text-align: center; color: #2c3e50; font-size: 1.8em; margin-bottom: 20px;" class="editable">המלצות מרכזיות</h3>
-                        <div id="recommendations">
-                            <!-- Will be populated by JavaScript -->
-                        </div>
-                    </div>
-                </div>
-            </section>
-            
-            <footer class="footer">
-                <p class="editable">© 2025 מחולל דוחות ניהול סיכונים. נוצר באמצעות בינה מלאכותית מתקדמת.</p>
-            </footer>
+        <!-- Report Section -->
+        <div class="report-section" id="reportSection">
+            <iframe id="reportFrame" style="width: 100%; height: 800px; border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1);"></iframe>
         </div>
     </div>
 
     <script>
-        let currentStep = 'upload', isEditing = false, uploadedFile = null, reportData = null;
+        // DOM Elements
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const uploadSection = document.getElementById('uploadSection');
+        const progressSection = document.getElementById('progressSection');
+        const reportSection = document.getElementById('reportSection');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
 
-        async function generateDetailedReport() {
-    // בדוק אם יש מפתח API
-    if (!apiHandler) {
-        if (!loadAPIKey() && !requestAPIKey()) {
-            alert('נדרש מפתח API כדי לנתח את המסמך');
-            showUploadStep();
-            return;
-        }
-    }
+        let selectedFile = null;
 
-    try {
-        // קרא את תוכן הקובץ
-        const fileContent = await readFileContent(uploadedFile);
-        const projectName = uploadedFile.name.replace(/\.(docx|pdf|txt)$/i, '');
-        
-        // שלח ל-Claude לניתוח
-        showMessage('🤖 מנתח את המסמך עם AI...');
-        const analysisResult = await apiHandler.analyzeDocument(fileContent, projectName);
-        
-        // עדכן את reportData עם התוצאות
-        reportData = formatReportData(analysisResult);
-        
-        // אכלס את הדוח
-        populateDetailedReport();
-        showReportStep();
-        
-    } catch (error) {
-        console.error('Error generating report:', error);
-        showMessage('❌ שגיאה בניתוח המסמך. נסה שוב.');
-        
-        // אם יש בעיה עם המפתח
-        if (error.message.includes('401')) {
-            localStorage.removeItem('claude_api_key');
-            apiHandler = null;
-            requestAPIKey();
-        }
-    }
-}
-        function populateDetailedReport() {
-            // Update header
-            document.getElementById('reportTitle').textContent = 'דוח ניהול סיכונים מקיף';
-            document.getElementById('reportSubtitle').textContent = reportData.project.name + ' - טרנספורמציה דיגיטלית ללמידה מותאמת אישית';
-            document.getElementById('reportBadge').textContent = `נוצר אוטומטית • ${new Date().toLocaleDateString('he-IL')}`;
+        // File Upload Handlers
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', handleDragOver);
+        uploadZone.addEventListener('dragleave', handleDragLeave);
+        uploadZone.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+        generateBtn.addEventListener('click', generateReport);
 
-            // Project overview
-            document.getElementById('projectOverview').innerHTML = `
-                <div class="overview-card">
-                    <h4><span class="icon">👤</span>מנהל הפרויקט</h4>
-                    <p class="editable">${reportData.project.manager}</p>
-                </div>
-                <div class="overview-card">
-                    <h4><span class="icon">🏢</span>ארגון</h4>
-                    <p class="editable">${reportData.project.organization}</p>
-                </div>
-                <div class="overview-card">
-                    <h4><span class="icon">🌍</span>היקף הפרויקט</h4>
-                    <p class="editable">${reportData.project.scope}</p>
-                </div>
-                <div class="overview-card">
-                    <h4><span class="icon">📅</span>לוח זמנים</h4>
-                    <p class="editable">${reportData.project.timeline}</p>
-                </div>
-                <div class="overview-card">
-                    <h4><span class="icon">🚀</span>סוג הפרויקט</h4>
-                    <p class="editable">${reportData.project.type}</p>
-                </div>
-                <div class="overview-card">
-                    <h4><span class="icon">🤝</span>שותפים רגולטורים</h4>
-                    <p class="editable">${reportData.project.partners}</p>
-                </div>
-            `;
-
-            // Goals
-            document.getElementById('projectGoals').innerHTML = reportData.goals.map((goal, index) => `
-                <div class="goal-item editable">
-                    <strong>${index + 1}. ${goal.title}</strong><br>
-                    ${goal.description}
-                </div>
-            `).join('');
-
-            // Deliverables
-            document.getElementById('projectDeliverables').innerHTML = reportData.deliverables.map(deliverable => `
-                <div class="deliverable-item editable">
-                    <strong>${deliverable}</strong>
-                </div>
-            `).join('');
-
-            // Risk summary
-            document.getElementById('riskSummary').innerHTML = `
-                <div class="summary-card">
-                    <div class="summary-number very-high editable">${reportData.risks.summary.very_high}</div>
-                    <div class="editable">סיכונים בחומרה<br>גבוהה מאוד</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-number high editable">${reportData.risks.summary.high}</div>
-                    <div class="editable">סיכונים בחומרה<br>גבוהה</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-number medium editable">${reportData.risks.summary.medium}</div>
-                    <div class="editable">סיכונים בחומרה<br>בינונית</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-number low editable">${reportData.risks.summary.low}</div>
-                    <div class="editable">סיכונים בחומרה<br>נמוכה</div>
-                </div>
-            `;
-
-            // Risk cards
-            document.getElementById('risksGrid').innerHTML = reportData.risks.list.map(risk => `
-                <div class="risk-card risk-${risk.severity}">
-                    <div class="risk-header">
-                        <div class="risk-title editable">${risk.title}</div>
-                        <div class="risk-severity severity-${risk.severity} editable">חומרה ${getSeverityText(risk.severity)}</div>
-                    </div>
-                    <div class="risk-metrics">
-                        <div class="metric">
-                            <div class="metric-value editable">${risk.probability}</div>
-                            <div class="metric-label editable">הסתברות</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value editable">${risk.impact}</div>
-                            <div class="metric-label editable">עוצמת נזק</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value editable">${risk.score}</div>
-                            <div class="metric-label editable">דרגת חומרה</div>
-                        </div>
-                    </div>
-                    <div class="risk-description editable">${risk.description}</div>
-                    ${risk.impacts ? `
-                        <div class="risk-impact">
-                            <div class="impact-title editable">השלכות אפשריות:</div>
-                            <ul class="impact-list">
-                                ${risk.impacts.map(impact => `<li class="editable">${impact}</li>`).join('')}
-                            </ul>
-                        </div>
-                    ` : ''}
-                    ${risk.opportunities ? `
-                        <div class="risk-opportunity">
-                            <div class="opportunity-title editable">הזדמנויות:</div>
-                            <ul class="opportunity-list">
-                                ${risk.opportunities.map(opp => `<li class="editable">${opp}</li>`).join('')}
-                            </ul>
-                        </div>
-                    ` : ''}
-                </div>
-            `).join('');
-
-            // Strategies
-            document.getElementById('strategiesSection').innerHTML = reportData.strategies.map(strategy => `
-                <div class="strategy-card">
-                    <div class="strategy-header editable">${strategy.title}</div>
-                    <div class="strategy-content">
-                        <p class="editable">${strategy.description}</p>
-                        ${strategy.details ? `
-                            <div class="strategy-detail">
-                                ${strategy.details.map(detail => `
-                                    <div class="detail-item">
-                                        <h5>${detail.title}</h5>
-                                        <p class="editable">${detail.content}</p>
-                                        <span class="timeline-badge editable">לו"ז: ${detail.timeline}</span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-            `).join('');
-
-            // Executive summary
-            document.getElementById('executiveSummary').innerHTML = `<p class="editable">${reportData.executiveSummary}</p>`;
-
-            // Recommendations
-            document.getElementById('recommendations').innerHTML = `
-                <ul style="list-style: none; padding: 0; margin: 0;">
-                    ${reportData.recommendations.map((rec, index) => `
-                        <li class="editable" style="font-size: 1.1em; margin-bottom: 15px; background: #e6f7ff; padding: 15px; border-radius: 10px; border-right: 5px solid #3498db;">
-                            <strong>${index + 1}. ${rec.split(':')[0]}:</strong> ${rec.split(':').slice(1).join(':').trim()}
-                        </li>
-                    `).join('')}
-                </ul>
-            `;
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
         }
 
-        function getSeverityText(severity) {
-            const severityMap = {
-                'very-high': 'גבוהה מאוד',
-                'high': 'גבוהה',
-                'medium': 'בינונית',
-                'low': 'נמוכה'
-            };
-            return severityMap[severity] || severity;
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
         }
 
-        function showUploadStep() {
-            document.getElementById('uploadStep').style.display = 'block';
-            document.getElementById('processingStep').classList.remove('active');
-            document.getElementById('reportStep').classList.remove('active');
-            document.getElementById('controlButtons').style.display = 'none';
-            currentStep = 'upload';
-            document.getElementById('fileInput').value = '';
-            uploadedFile = null;
-            reportData = null;
-            
-            // Reset processing steps
-            const steps = ['step1', 'step2', 'step3', 'step4'];
-            steps.forEach(step => {
-                const stepElement = document.getElementById(step);
-                stepElement.classList.remove('active', 'current');
-            });
-            document.getElementById('progressFill').style.width = '0%';
-        }
-
-        function showProcessingStep() {
-            document.getElementById('uploadStep').style.display = 'none';
-            document.getElementById('processingStep').classList.add('active');
-            document.getElementById('reportStep').classList.remove('active');
-            document.getElementById('controlButtons').style.display = 'none';
-            currentStep = 'processing';
-        }
-
-        function showReportStep() {
-            document.getElementById('uploadStep').style.display = 'none';
-            document.getElementById('processingStep').classList.remove('active');
-            document.getElementById('reportStep').classList.add('active');
-            document.getElementById('controlButtons').style.display = 'flex';
-            currentStep = 'report';
-            showMessage('✅ הדוח הושלם בהצלחה! ניתן לערוך ולהוריד PDF');
-            
-            // Setup navigation
-            setupNavigation();
-        }
-
-        function toggleEdit() {
-            isEditing = !isEditing;
-            const editableElements = document.querySelectorAll('.editable');
-            const editButton = document.querySelector('.edit-toggle');
-
-            editableElements.forEach(el => { 
-                el.contentEditable = isEditing; 
-            });
-
-            if (isEditing) {
-                editButton.textContent = '💾 סיים עריכה';
-                editButton.classList.add('active');
-                showMessage('✅ מצב עריכה הופעל!');
-            } else {
-                editButton.textContent = '🎨 התחל עריכה';
-                editButton.classList.remove('active');
-                showMessage('✅ השינויים נשמרו!');
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
             }
         }
 
-        async function exportToPDF() {
-            const button = document.querySelector('.pdf-export');
-            if (button.classList.contains('exporting')) return;
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'text/plain'];
             
-            button.classList.add('exporting');
-            button.textContent = '⏳ מייצא...';
-            
+            if (!allowedTypes.includes(file.type)) {
+                showError('סוג קובץ לא נתמך. אנא העלה PDF, Word או קובץ טקסט.');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                showError('הקובץ גדול מדי. מקסימום 10MB.');
+                return;
+            }
+
+            selectedFile = file;
+            uploadZone.innerHTML = `
+                <div class="upload-icon">✅</div>
+                <div class="upload-text">קובץ נבחר: ${file.name}</div>
+                <div class="file-types">${formatFileSize(file.size)}</div>
+            `;
+            generateBtn.disabled = false;
+            showSuccess('קובץ הועלה בהצלחה! מלא את הפרטים ולחץ לייצור הדוח.');
+        }
+
+        async function generateReport() {
+            if (!selectedFile) {
+                showError('אנא בחר קובץ תחילה');
+                return;
+            }
+
+            const projectName = document.getElementById('projectName').value;
+            const organization = document.getElementById('organization').value;
+
+            if (!projectName || !organization) {
+                showError('אנא מלא את שם הפרויקט והארגון');
+                return;
+            }
+
+            // Show progress
+            uploadSection.style.display = 'none';
+            progressSection.classList.add('show');
+
             try {
-                const wasEditing = isEditing;
-                if (wasEditing) {
-                    document.querySelectorAll('.editable').forEach(el => { 
-                        el.contentEditable = false; 
-                    });
-                }
-                
-                ['.control-buttons', '.success-message'].forEach(selector => {
-                    const el = document.querySelector(selector);
-                    if (el) el.style.display = 'none';
+                // Step 1: Upload
+                updateProgress(25, 'העלאת קובץ...', 1);
+                await simulateDelay(1000);
+
+                // Step 2: Analysis
+                updateProgress(50, 'ניתוח מסמך...', 2);
+                const documentText = await extractTextFromFile(selectedFile);
+                await simulateDelay(1500);
+
+                // Step 3: AI Processing
+                updateProgress(75, 'עיבוד AI...', 3);
+                const reportData = await analyzeWithClaude(documentText, {
+                    projectName,
+                    organization,
+                    customInstructions: document.getElementById('customInstructions').value
                 });
-                
-                const printCSS = `
-                    @media print {
-                        body { 
-                            -webkit-print-color-adjust: exact !important;
-                            color-adjust: exact !important;
-                            print-color-adjust: exact !important;
-                        }
-                        .control-buttons, .success-message { 
-                            display: none !important; 
-                        }
-                        .report-container { 
-                            max-width: none !important; 
-                            box-shadow: none !important; 
-                            border-radius: 0 !important; 
-                        }
-                        .section, .summary-box, .risk-card {
-                            page-break-inside: avoid;
-                            break-inside: avoid;
-                        }
-                        .nav-menu {
-                            position: static !important;
-                        }
-                    }
-                `;
-                
-                const style = document.createElement('style');
-                style.textContent = printCSS;
-                document.head.appendChild(style);
-                
-                setTimeout(() => {
-                    window.print();
-                    
-                    setTimeout(() => {
-                        document.head.removeChild(style);
-                        ['.control-buttons', '.success-message'].forEach(selector => {
-                            const el = document.querySelector(selector);
-                            if (el) el.style.display = '';
-                        });
-                        
-                        if (wasEditing) {
-                            document.querySelectorAll('.editable').forEach(el => { 
-                                el.contentEditable = true; 
-                            });
-                        }
-                        
-                        button.classList.remove('exporting');
-                        button.textContent = '📄 ייצוא ל-PDF';
-                        
-                        const filename = `דוח-ניהול-סיכונים-${reportData?.project?.name || 'פרויקט'}-${new Date().toISOString().slice(0, 10)}.pdf`;
-                        showMessage(`✅ ההדפסה הושלמה! בחר "שמור כ-PDF" בדפדפן\nשם קובץ מוצע: ${filename}`);
-                    }, 1000);
-                }, 500);
-                
+                await simulateDelay(2000);
+
+                // Step 4: Generate Report
+                updateProgress(100, 'יצירת דוח...', 4);
+                await simulateDelay(1000);
+
+                // Show report
+                displayReport(reportData);
+
             } catch (error) {
-                console.error('Export failed:', error);
-                button.classList.remove('exporting');
-                button.textContent = '📄 ייצוא ל-PDF';
-                showMessage('❌ שגיאה בייצוא. נסה שוב.');
+                console.error('שגיאה ביצירת הדוח:', error);
+                showError('שגיאה ביצירת הדוח: ' + error.message);
+                resetToUpload();
             }
         }
 
-        function showMessage(msg) {
-            const successMessage = document.getElementById('successMessage');
-            successMessage.textContent = msg;
-            successMessage.classList.add('show');
-            setTimeout(() => { 
-                successMessage.classList.remove('show'); 
-            }, 5000);
-        }
-
-        function setupNavigation() {
-            const sections = document.querySelectorAll('section[id]');
-            const navLinks = document.querySelectorAll('.nav-link');
-
-            window.addEventListener('scroll', () => {
-                let current = '';
-                sections.forEach(section => {
-                    const sectionTop = section.offsetTop;
-                    if (pageYOffset >= sectionTop - 100) { 
-                        current = section.getAttribute('id');
-                    }
+        async function analyzeWithClaude(documentText, options) {
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        documentText,
+                        options
+                    })
                 });
 
-                navLinks.forEach(link => {
-                    link.classList.remove('active');
-                    if (link.href.includes(current)) {
-                        link.classList.add('active');
-                    }
-                });
-            });
+                if (!response.ok) {
+                    throw new Error(`שגיאה בשרת: ${response.status}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('שגיאה בקריאה ל-Claude:', error);
+                throw new Error('לא ניתן להתחבר לשירות הניתוח. אנא נסה שוב מאוחר יותר.');
+            }
         }
 
-        // Drag and drop
-        function setupDragAndDrop() {
-            const uploadZone = document.getElementById('uploadZone');
-            
-            uploadZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadZone.classList.add('dragover');
-            });
-
-            uploadZone.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                uploadZone.classList.remove('dragover');
-            });
-
-            uploadZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadZone.classList.remove('dragover');
+        async function extractTextFromFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    if (file.type === 'text/plain') {
+                        resolve(e.target.result);
+                    } else {
+                        // For PDF and Word files, we'll send them to the server for processing
+                        resolve(e.target.result);
+                    }
+                };
+                reader.onerror = () => reject(new Error('שגיאה בקריאת הקובץ'));
                 
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                    document.getElementById('fileInput').files = files;
-                    handleFileUpload({ target: { files: files } });
+                if (file.type === 'text/plain') {
+                    reader.readAsText(file, 'utf-8');
+                } else {
+                    reader.readAsDataURL(file);
                 }
             });
         }
 
-        // Initialize
-        function init() {
-            setupDragAndDrop();
-            showUploadStep();
-            console.log('🏗️ מחולל דוחות ניהול סיכונים הופעל בהצלחה!');
+        function displayReport(reportData) {
+            progressSection.style.display = 'none';
+            reportSection.classList.add('show');
+
+            // Generate HTML report
+            const reportHTML = generateReportHTML(reportData);
+            const reportFrame = document.getElementById('reportFrame');
+            reportFrame.srcdoc = reportHTML;
         }
 
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
-    <script src="js/api-handler.js"></script>
-    <script>
-    // משתנים גלובליים
-    let apiHandler = null;
-    let API_KEY = null;
-
-    // פונקציה לבקש מפתח API
-    function requestAPIKey() {
-        const key = prompt('הכנס את מפתח ה-API של Claude:\n(המפתח יישמר רק בדפדפן שלך)');
-        if (key) {
-            API_KEY = key;
-            localStorage.setItem('claude_api_key', key);
-            apiHandler = new ClaudeAPIHandler(key);
-            return true;
+        function generateReportHTML(data) {
+            // This will generate the full HTML report using the base template
+            // For now, we'll use the example template from the documents
+            return document.querySelector('script[type="text/html"]').textContent
+                .replace(/\{\{PROJECT_NAME\}\}/g, data.projectName || '')
+                .replace(/\{\{ORGANIZATION\}\}/g, data.organization || '')
+                .replace(/\{\{PROJECT_MANAGER\}\}/g, data.projectManager || '')
+                // Add more replacements as needed...
         }
-        return false;
-    }
 
-    // פונקציה לטעון מפתח שמור
-    function loadAPIKey() {
-        const savedKey = localStorage.getItem('claude_api_key');
-        if (savedKey) {
-            API_KEY = savedKey;
-            apiHandler = new ClaudeAPIHandler(savedKey);
-            return true;
-        }
-        return false;
-    }
+        function updateProgress(percent, text, step) {
+            progressFill.style.width = percent + '%';
+            progressText.textContent = percent + '%';
 
-    // פונקציה לקרוא תוכן קובץ
-    async function readFileContent(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = reject;
-            reader.readAsText(file);
-        });
-    }
-
-    // פונקציה לעיבוד הנתונים מ-Claude
-    function formatReportData(apiData) {
-        return {
-            project: {
-                name: apiData.projectName,
-                manager: apiData.projectManager || 'לא צוין',
-                organization: apiData.organization || 'לא צוין',
-                scope: apiData.scope || 'לא צוין',
-                timeline: apiData.timeline || 'לא צוין',
-                type: apiData.projectType || 'לא צוין',
-                partners: apiData.partners || 'לא צוין'
-            },
-            goals: apiData.goals || [],
-            deliverables: apiData.deliverables || [],
-            risks: {
-                summary: calculateRiskSummary(apiData.risks),
-                list: apiData.risks || []
-            },
-            strategies: apiData.strategies || [],
-            executiveSummary: apiData.executiveSummary || '',
-            recommendations: apiData.recommendations || []
-        };
-    }
-
-    // פונקציה לחישוב סיכום סיכונים
-    function calculateRiskSummary(risks) {
-        const summary = { very_high: 0, high: 0, medium: 0, low: 0 };
-        if (!risks) return summary;
-        
-        risks.forEach(risk => {
-            if (risk.severity === 'very-high') summary.very_high++;
-            else if (risk.severity === 'high') summary.high++;
-            else if (risk.severity === 'medium') summary.medium++;
-            else if (risk.severity === 'low') summary.low++;
-        });
-        return summary;
-    }
-
-    // הוספת כפתור הגדרות
-    document.addEventListener('DOMContentLoaded', function() {
-        const settingsBtn = document.createElement('button');
-        settingsBtn.innerHTML = '⚙️ הגדרות API';
-        settingsBtn.className = 'control-btn';
-        settingsBtn.style.cssText = 'position: fixed; top: 200px; left: 20px; background: #95a5a6; color: white; border: none; padding: 15px 25px; border-radius: 25px; cursor: pointer; font-size: 1em; font-weight: bold; z-index: 1000;';
-        settingsBtn.onclick = function() {
-            if (confirm('האם למחוק את מפתח ה-API השמור?')) {
-                localStorage.removeItem('claude_api_key');
-                apiHandler = null;
-                API_KEY = null;
-                showMessage('✅ מפתח ה-API נמחק');
+            // Update steps
+            for (let i = 1; i <= 4; i++) {
+                const stepEl = document.getElementById(`step${i}`);
+                if (i < step) {
+                    stepEl.className = 'progress-step completed';
+                } else if (i === step) {
+                    stepEl.className = 'progress-step active';
+                } else {
+                    stepEl.className = 'progress-step';
+                }
             }
-        };
-        document.body.appendChild(settingsBtn);
-    });
+        }
+
+        function simulateDelay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showError(message) {
+            const existing = document.querySelector('.error-message');
+            if (existing) existing.remove();
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            uploadSection.appendChild(errorDiv);
+
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        function showSuccess(message) {
+            const existing = document.querySelector('.success-message');
+            if (existing) existing.remove();
+
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = message;
+            uploadSection.appendChild(successDiv);
+
+            setTimeout(() => successDiv.remove(), 3000);
+        }
+
+        function resetToUpload() {
+            progressSection.style.display = 'none';
+            reportSection.style.display = 'none';
+            uploadSection.style.display = 'block';
+            
+            // Reset progress
+            progressFill.style.width = '0%';
+            progressText.textContent = '0%';
+            
+            // Reset steps
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`step${i}`).className = 'progress-step';
+            }
+        }
+    </script>
+
+    <!-- Report Template -->
+    <script type="text/html">
+        <!-- This will contain the base report template -->
+        <!-- Will be loaded from the backend -->
     </script>
 </body>
 </html>
