@@ -399,7 +399,6 @@
             document.getElementById('reportFrame').srcdoc = generateReportHTML(reportData);
         }
 
-        function generateReportHTML(data) {
             // סניטציה של כל הנתונים לפני הזרקה ל-HTML
             const safeData = {
                 projectName: sanitizeHTML(data.projectName),
