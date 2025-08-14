@@ -2,7 +2,7 @@
   "functions": {
     "api/analyze.js": {
       "maxDuration": 30,
-      "memory": 512
+      "memory": 1024
     }
   },
   "headers": [
@@ -26,7 +26,10 @@
   ],
   "api": {
     "bodyParser": {
-      "sizeLimit": "1mb"
+      "sizeLimit": "2mb"
     }
+  },
+  "env": {
+    "CLAUDE_API_KEY": "@claude_api_key"
   }
 }
