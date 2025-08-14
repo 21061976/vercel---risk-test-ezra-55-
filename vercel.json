@@ -5,10 +5,10 @@
       "maxDuration": 60
     }
   },
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!api/|favicon.ico).*)",
+      "destination": "/index.html"
     }
   ]
 }
