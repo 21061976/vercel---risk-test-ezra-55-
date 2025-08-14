@@ -2,15 +2,9 @@
   "functions": {
     "api/analyze.js": {
       "maxDuration": 30,
-      "memory": 1024
+      "memory": 512
     }
   },
-  "rewrites": [
-    {
-      "source": "/utils/(.*)",
-      "destination": "/utils/$1"
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",
@@ -29,5 +23,10 @@
         }
       ]
     }
-  ]
+  ],
+  "api": {
+    "bodyParser": {
+      "sizeLimit": "1mb"
+    }
+  }
 }
