@@ -268,63 +268,17 @@
             `;
             generateBtn.disabled = false;
             showSuccess('קובץ הועלה בהצלחה! לחץ ליצירת הדוח.');
-      async function generateReport() {
-    if (!selectedFile) {
-        showError('אנא בחר קובץ תחילה');
-        return;
-    }
-
-    // מעבר לתצוגת התקדמות (שונה מעט)
-    uploadSection.classList.add('hidden');
-    reportSection.classList.remove('hidden'); // הצג את אזור הדוח מיד
-    const reportContentEl = document.getElementById('reportContent');
-    reportContentEl.innerHTML = '<div class="progress-title">מייצר את הדוח שלך... 🤖</div>'; // הצג הודעת טעינה
-
-    try {
-        const documentText = await extractTextSafely(selectedFile);
-        const advancedSettings = {
-            analysisType: document.getElementById('analysisType').value,
-            riskFocus: document.getElementById('riskFocus').value,
-            targetAudience: document.getElementById('targetAudience').value,
-            specificContext: document.getElementById('specificContext').value
-        };
-
-        const response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ documentText: documentText, options: advancedSettings })
-        });
-
-        if (!response.ok) {
-            throw new Error(`שגיאה בשרת: ${response.status} ${response.statusText}`);
-        }
-
-        // התחל לקרוא את ה-Stream
-        reportContentEl.innerHTML = ''; // נקה את הודעת הטעינה
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) {
-                break; // הסטרים הסתיים
+     async function generateReport() {
+            if (!selectedFile) {
+                showError('אנא בחר קובץ תחילה');
+                return;
             }
-            // קח את חתיכת הטקסט והוסף אותה ל-div
-            const textChunk = decoder.decode(value);
-            reportContentEl.innerHTML += textChunk;
-        }
-
-    } catch (error) {
-        console.error('שגיאה ביצירת הדוח:', error);
-        reportContentEl.innerHTML = `<div class="error-message">שגיאה ביצירת הדוח: ${error.message}</div>`;
-    }
-}
-            
-            // מעבר לתצוגת התקדמות
-            uploadSection.classList.add('hidden');
-            progressSection.classList.remove('hidden');
 
             try {
+                // מעבר לתצוגת התקדמות
+                uploadSection.classList.add('hidden');
+                progressSection.classList.remove('hidden');
+
                 updateProgress(30, 'מנתח את המסמך...', 1);
                 await delay(1000);
 
@@ -342,18 +296,70 @@
                     specificContext: document.getElementById('specificContext').value
                 };
 
-                const reportData = await analyzeWithClaude(documentText, advancedSettings);
-                
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        documentText: documentText, 
+                        options: advancedSettings 
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`שגיאה בשרת: ${response.status} ${response.statusText}`);
+                }
+
                 updateProgress(100, 'מכין את הדוח הסופי...', 3);
                 await delay(1000);
 
-                displayReport(reportData);
+                // מעבר לתצוגת הדוח
+                progressSection.classList.add('hidden');
+                reportSection.classList.remove('hidden');
+                
+                const reportContentEl = document.getElementById('reportContent');
+                reportContentEl.innerHTML = '<div style="text-align: center; padding: 20px;">טוען דוח... 🤖</div>';
+
+                // קריאת התוכן מהAPI
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let markdownContent = '';
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    const textChunk = decoder.decode(value);
+                    markdownContent += textChunk;
+                    
+                    // המרה של Markdown ל-HTML (פשוטה)
+                    const htmlContent = convertMarkdownToHTML(markdownContent);
+                    reportContentEl.innerHTML = htmlContent;
+                }
 
             } catch (error) {
                 console.error('שגיאה ביצירת הדוח:', error);
                 showError('שגיאה ביצירת הדוח: ' + error.message);
                 resetToUpload();
             }
+        }
+
+        // פונקציה פשוטה להמרת Markdown ל-HTML
+        function convertMarkdownToHTML(markdown) {
+            return markdown
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2 style="color: #667eea; border-bottom: 2px solid #667eea; padding-bottom: 10px; margin: 20px 0;">$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1 style="color: #667eea; text-align: center; margin: 20px 0;">$1</h1>')
+                .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+                .replace(/\*(.*)\*/gim, '<em>$1</em>')
+                .replace(/^\* (.*$)/gim, '<li>$1</li>')
+                .replace(/(<li>.*<\/li>)/gims, '<ul style="margin: 10px 0; padding-right: 20px;">$1</ul>')
+                .replace(/^\d+\. (.*$)/gim, '<li>$1</li>')
+                .replace(/\n\n/gim, '</p><p>')
+                .replace(/^(?!<[h|u|l])/gim, '<p>')
+                .replace(/$/gim, '</p>')
+                .replace(/<p><\/p>/gim, '')
+                .replace(/<p>(<h[1-6])/gim, '$1')
+                .replace(/(<\/h[1-6]>)<\/p>/gim, '$1');
         }
 
         async function extractTextSafely(file) {
