@@ -4,5 +4,16 @@
       "memory": 1024,
       "maxDuration": 60
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/html; charset=utf-8"
+        }
+      ]
+    }
+  ]
 }
