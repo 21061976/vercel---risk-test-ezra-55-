@@ -5,7 +5,9 @@
   "scripts": {
     "build": "echo 'Build complete'"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.3"
+  },
   "engines": {
     "node": "22.x"
   }
