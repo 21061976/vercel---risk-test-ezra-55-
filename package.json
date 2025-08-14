@@ -1,16 +1,5 @@
 {
-  "name": "ezra-risk-generator",
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "build": "echo 'Build complete'",
-    "dev": "vercel dev",
-    "deploy": "vercel --prod"
-  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3"
-  },
-  "engines": {
-    "node": "18.x"
   }
 }
