@@ -13,12 +13,14 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
-    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+    return res.status(405).json({ 
+      error: `Method ${req.method} Not Allowed` 
+    });
   }
 
   try {
     console.log('API Request received');
-    
+
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY not configured');
       return res.status(500).json({ 
@@ -30,12 +32,16 @@ export default async function handler(req, res) {
 
     if (!documentText) {
       console.error('No document text provided');
-      return res.status(400).json({ error: 'Document text is required' });
+      return res.status(400).json({ 
+        error: 'Document text is required' 
+      });
     }
 
     if (documentText.length < 10) {
       console.error('Document text too short');
-      return res.status(400).json({ error: 'Document text is too short for analysis' });
+      return res.status(400).json({ 
+        error: 'Document text is too short for analysis' 
+      });
     }
 
     console.log('Document text length:', documentText.length);
@@ -49,7 +55,9 @@ export default async function handler(req, res) {
       console.log('Anthropic client initialized');
     } catch (initError) {
       console.error('Failed to initialize Anthropic client:', initError);
-      return res.status(500).json({ error: 'Failed to initialize AI service' });
+      return res.status(500).json({ 
+        error: 'Failed to initialize AI service' 
+      });
     }
 
     const prompt = `אתה EZRA 5.0, מומחה לניהול סיכונים במערכת החינוך הישראלית.
@@ -126,7 +134,7 @@ ${documentText.substring(0, 8000)}
       if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
         chunks++;
         res.write(event.delta.text);
-        
+
         if (chunks % 50 === 0) {
           console.log(`Sent ${chunks} chunks`);
         }
@@ -139,7 +147,7 @@ ${documentText.substring(0, 8000)}
   } catch (error) {
     console.error('Error in analyze handler:', error);
     console.error('Error stack:', error.stack);
-    
+
     if (!res.writableEnded && !res.headersSent) {
       res.status(500).json({ 
         error: 'Failed to process request',
