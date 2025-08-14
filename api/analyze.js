@@ -7,25 +7,15 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// הגדרת הפונקציה לרוץ כ-Edge Function כדי לתמוך בסטרימינג בצורה מיטבית
-export const config = {
-  runtime: 'edge',
-};
-
-export default async function handler(req) {
+export default async function handler(req, res) {
+  // Note: We use `res` (response object) now, which is standard in Node.js functions
   try {
-    const { documentText, options } = await req.json();
+    const { documentText, options } = req.body; // In Node.js, we use req.body
 
     if (!documentText) {
-      return new Response(JSON.stringify({ error: 'Document text is required' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return res.status(400).json({ error: 'Document text is required' });
     }
 
-    // --- בניית הפרומפט המשודרג ---
-    // הנחיה חשובה ל-AI: בקש ממנו להחזיר את התשובה בפורמט Markdown.
-    // זה יאפשר לנו לעצב אותה יפה בצד הלקוח.
     const prompt = `
       אתה EZRA 5.0, מומחה לניהול סיכונים.
       קיבלת את מסמך התפיסה הבא:
@@ -48,42 +38,35 @@ export default async function handler(req) {
       אל תכלול שום טקסט מקדים כמו "בטח, הנה הדוח המבוקש".
     `;
 
-    // יצירת ה-Stream מ-Claude
     const stream = await anthropic.messages.create({
-      model: 'claude-3-opus-20240229', // או כל מודל אחר שאתה משתמש בו
+      model: 'claude-3-opus-20240229',
       max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
       stream: true,
     });
 
-    // יצירת Stream חדש להחזרת התשובה לדפדפן
-    const responseStream = new ReadableStream({
-      async start(controller) {
-        for await (const event of stream) {
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            const textChunk = event.delta.text;
-            // שלח כל חתיכת טקסט שמגיעה מיד לדפדפן
-            controller.enqueue(new TextEncoder().encode(textChunk));
-          }
-        }
-        // סגור את ה-Stream כשהכל הסתיים
-        controller.close();
-      },
+    // Set headers for streaming
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Transfer-Encoding': 'chunked',
+      'X-Content-Type-Options': 'nosniff',
     });
 
-    // החזרת ה-Stream לדפדפן כתשובה
-    return new Response(responseStream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'X-Content-Type-Options': 'nosniff',
-      },
-    });
+    // Pipe the stream from Claude directly to the response
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        res.write(event.delta.text);
+      }
+    }
+
+    // End the response when the stream is finished
+    res.end();
 
   } catch (error) {
     console.error('Error in analyze handler:', error);
-    return new Response(JSON.stringify({ error: 'Failed to process request' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    // Ensure the stream is closed in case of an error
+    if (!res.writableEnded) {
+      res.status(500).json({ error: 'Failed to process request' });
+    }
   }
 }
