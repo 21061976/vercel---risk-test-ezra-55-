@@ -1,9 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 export default async function handler(req, res) {
   // הוסף CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -19,50 +15,99 @@ export default async function handler(req, res) {
   // Ensure we only handle POST requests
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
   try {
+    console.log('API Request received');
+    
+    // בדיקה שיש API key
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('ANTHROPIC_API_KEY not configured');
+      return res.status(500).json({ 
+        error: 'API key not configured. Please set ANTHROPIC_API_KEY environment variable.' 
+      });
+    }
+
     const { documentText, options } = req.body;
 
     if (!documentText) {
+      console.error('No document text provided');
       return res.status(400).json({ error: 'Document text is required' });
     }
 
-    // בדיקה שיש API key
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return res.status(500).json({ error: 'API key not configured' });
+    if (documentText.length < 10) {
+      console.error('Document text too short');
+      return res.status(400).json({ error: 'Document text is too short for analysis' });
     }
 
-    const prompt = `
-      אתה EZRA 5.0, מומחה לניהול סיכונים במערכת החינוך הישראלית.
-      קיבלת את מסמך התפיסה הבא:
-      
-      <document>
-      ${documentText}
-      </document>
+    console.log('Document text length:', documentText.length);
+    console.log('Options:', options);
 
-      וההנחיות הבאות לניתוח:
-      <options>
-      - סוג ניתוח: ${options.analysisType || 'standard'}
-      - התמקדות בסיכונים: ${options.riskFocus || 'balanced'}
-      - קהל יעד לדוח: ${options.targetAudience || 'management'}
-      - הקשר מיוחד: ${options.specificContext || 'אין'}
-      </options>
+    // יצירת instance של Anthropic
+    let anthropic;
+    try {
+      anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+      console.log('Anthropic client initialized');
+    } catch (initError) {
+      console.error('Failed to initialize Anthropic client:', initError);
+      return res.status(500).json({ error: 'Failed to initialize AI service' });
+    }
 
-      המשימה שלך היא לייצר דוח ניהול סיכונים מקיף ומפורט.
-      **חובה: פרמט את כל התשובה שלך בפורמט Markdown בלבד.**
-      השתמש בכותרות (#, ##, ###), רשימות (*), הדגשות (**טקסט מודגש**) וטבלאות אם נדרש.
-      התחל ישירות עם כותרת הדוח.
+    const prompt = `אתה EZRA 5.0, מומחה לניהול סיכונים במערכת החינוך הישראלית.
+קיבלת את מסמך התפיסה הבא לניתוח:
 
-      יש לכלול בדוח:
-      1. תקציר מנהלים
-      2. זיהוי וניתוח סיכונים עיקריים
-      3. הערכת רמת חדשנות הפרויקט
-      4. המלצות מעשיות
-      5. מטריצת סיכונים
-      6. לוח זמנים ליישום
-    `;
+<document>
+${documentText.substring(0, 8000)}
+</document>
+
+הנחיות לניתוח:
+- סוג ניתוח: ${options?.analysisType || 'standard'}
+- התמקדות בסיכונים: ${options?.riskFocus || 'balanced'}
+- קהל יעד לדוח: ${options?.targetAudience || 'management'}
+- הקשר מיוחד: ${options?.specificContext || 'אין'}
+
+צור דוח ניהול סיכונים מקיף בפורמט Markdown הכולל:
+
+# דוח ניהול סיכונים - [שם הפרויקט]
+
+## תקציר מנהלים
+[סיכום קצר של הממצאים העיקריים]
+
+## זיהוי הפרויקט
+- **שם הפרויקט**: [שם]
+- **ארגון**: [ארגון]
+- **מטרות עיקריות**: [רשימת מטרות]
+
+## ניתוח סיכונים עיקריים
+### סיכון גבוה #1
+- **תיאור**: [תיאור הסיכון]
+- **השפעה צפויה**: [השפעות]
+- **הסתברות**: [גבוהה/בינונית/נמוכה]
+- **אסטרטגיות התמודדות**: [המלצות]
+
+## הערכת רמת חדשנות
+[ניתוח רמת החדשנות של הפרויקט]
+
+## המלצות מעשיות
+1. **המלצה ראשונה**: [פירוט]
+2. **המלצה שנייה**: [פירוט]
+
+## מטריצת סיכונים
+| סיכון | הסתברות | השפעה | רמת חומרה | פעולות נדרשות |
+|--------|----------|-------|------------|----------------|
+| [סיכון 1] | [גבוהה] | [גבוהה] | [קריטית] | [פעולות] |
+
+## לוח זמנים ליישום המלצות
+- **שלב ראשון** (0-30 יום): [פעולות מיידיות]
+- **שלב שני** (1-3 חודשים): [פעולות בינוניות טווח]
+- **שלב שלישי** (3-12 חודשים): [פעולות ארוכות טווח]
+
+התחל ישירות עם הכותרת הראשית ובנה דוח מקצועי ומפורט.`;
+
+    console.log('Sending request to Anthropic...');
 
     const stream = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
@@ -71,26 +116,40 @@ export default async function handler(req, res) {
       stream: true,
     });
 
+    console.log('Stream created successfully');
+
     res.writeHead(200, {
       'Content-Type': 'text/plain; charset=utf-8',
       'Transfer-Encoding': 'chunked',
       'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-cache',
     });
 
+    let chunks = 0;
     for await (const event of stream) {
       if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        chunks++;
         res.write(event.delta.text);
+        
+        // אופציונלי: לוג כל 50 chunks
+        if (chunks % 50 === 0) {
+          console.log(`Sent ${chunks} chunks`);
+        }
       }
     }
 
+    console.log(`Stream completed. Total chunks: ${chunks}`);
     res.end();
 
   } catch (error) {
     console.error('Error in analyze handler:', error);
-    if (!res.writableEnded) {
+    console.error('Error stack:', error.stack);
+    
+    if (!res.writableEnded && !res.headersSent) {
       res.status(500).json({ 
         error: 'Failed to process request',
-        details: error.message 
+        details: error.message,
+        type: error.constructor.name
       });
     }
   }
