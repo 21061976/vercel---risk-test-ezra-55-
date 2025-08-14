@@ -1,7 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 
 export default async function handler(req, res) {
-  // הוסף CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -12,7 +11,6 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Ensure we only handle POST requests
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
@@ -21,7 +19,6 @@ export default async function handler(req, res) {
   try {
     console.log('API Request received');
     
-    // בדיקה שיש API key
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY not configured');
       return res.status(500).json({ 
@@ -44,7 +41,6 @@ export default async function handler(req, res) {
     console.log('Document text length:', documentText.length);
     console.log('Options:', options);
 
-    // יצירת instance של Anthropic
     let anthropic;
     try {
       anthropic = new Anthropic({
@@ -131,7 +127,6 @@ ${documentText.substring(0, 8000)}
         chunks++;
         res.write(event.delta.text);
         
-        // אופציונלי: לוג כל 50 chunks
         if (chunks % 50 === 0) {
           console.log(`Sent ${chunks} chunks`);
         }
